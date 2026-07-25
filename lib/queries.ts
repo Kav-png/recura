@@ -34,6 +34,11 @@ export async function getPatientPanel(practiceId: string) {
     .is("reviewed_at", null)
     .order("sent_at", { ascending: false });
 
+  const patientIds = patients.map((p) => p.id);
+  const { data: billing } = patientIds.length
+    ? await supabase.from("billing_events").select("patient_id, amount, status").in("patient_id", patientIds)
+    : { data: [] };
+
   const latestCheckinByPatient = new Map<string, { called_at: string; proms_score: number | null }>();
   for (const c of checkins ?? []) {
     if (!latestCheckinByPatient.has(c.patient_id)) {
@@ -50,11 +55,20 @@ export async function getPatientPanel(practiceId: string) {
     }
   }
 
+  const capturedBillingByPatient = new Map<string, number>();
+  const pendingBillingByPatient = new Map<string, number>();
+  for (const b of billing ?? []) {
+    const target = b.status === "captured" ? capturedBillingByPatient : pendingBillingByPatient;
+    target.set(b.patient_id, (target.get(b.patient_id) ?? 0) + b.amount);
+  }
+
   return patients.map((p) => ({
     ...p,
     clinicianName: p.clinicians?.name ?? null,
     latestCheckin: latestCheckinByPatient.get(p.id) ?? null,
     status: worstAlertByPatient.get(p.id) ?? "stable",
+    capturedBilling: capturedBillingByPatient.get(p.id) ?? 0,
+    pendingBilling: pendingBillingByPatient.get(p.id) ?? 0,
   }));
 }
 

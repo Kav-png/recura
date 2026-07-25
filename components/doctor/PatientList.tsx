@@ -11,6 +11,8 @@ type PanelPatient = {
   discharge_date: string;
   status: string;
   latestCheckin: { proms_score: number | null } | null;
+  capturedBilling: number;
+  pendingBilling: number;
 };
 
 export function PatientList({ patients }: { patients: PanelPatient[] }) {
@@ -42,11 +44,23 @@ export function PatientList({ patients }: { patients: PanelPatient[] }) {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold truncate">{p.name}</div>
-                <div className="text-xs text-muted">
-                  Day {daysSince(p.discharge_date)} post-discharge &middot; {p.condition}
+                <div className="text-xs text-muted flex items-center gap-1.5 flex-wrap">
+                  <span>
+                    Day {daysSince(p.discharge_date)} post-discharge &middot; {p.condition}
+                  </span>
+                  {p.capturedBilling > 0 && (
+                    <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-stable-bg text-stable">
+                      ${p.capturedBilling.toFixed(0)}
+                    </span>
+                  )}
+                  {p.pendingBilling > 0 && (
+                    <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-warning-bg text-warning">
+                      ${p.pendingBilling.toFixed(0)} pending
+                    </span>
+                  )}
                 </div>
               </div>
-              <div className={`font-heading font-bold text-[13px] ${meta.text}`}>
+              <div className={`font-heading font-bold text-[13px] shrink-0 ${meta.text}`}>
                 {p.latestCheckin?.proms_score ?? "—"}
               </div>
             </Link>
