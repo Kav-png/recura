@@ -21,7 +21,7 @@ export default async function DoctorLayout({ children }: { children: React.React
 
   return (
     <div className="w-full min-h-screen bg-background text-foreground">
-      <Sidebar />
+      <Sidebar clinicianName={clinician.name} />
       <div className="flex flex-col min-w-0 pt-24 lg:pt-0 lg:pl-[124px]">
         <Topbar
           clinicianName={clinician.name}

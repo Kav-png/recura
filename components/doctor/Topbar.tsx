@@ -1,17 +1,7 @@
 import { Bell } from "lucide-react";
 import { SearchBox } from "@/components/doctor/SearchBox";
 import { AddPatientButton } from "@/components/doctor/AddPatientButton";
-
-function initials(name: string) {
-  return name
-    .replace(/^Dr\.\s*/, "")
-    .split(/[\s,]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0])
-    .join("")
-    .toUpperCase();
-}
+import { initials } from "@/lib/status";
 
 export function Topbar({
   clinicianName,

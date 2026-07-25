@@ -19,6 +19,17 @@ export function daysSince(dateStr: string) {
   return days;
 }
 
+export function initials(name: string) {
+  return name
+    .replace(/^Dr\.\s*/, "")
+    .split(/[\s,]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase();
+}
+
 export function timeAgo(iso: string) {
   const ms = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(ms / 60000);

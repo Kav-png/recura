@@ -3,13 +3,14 @@ import { ReloadDemoDataButton } from "@/components/settings/ReloadDemoDataButton
 import { RealPracticePanel } from "@/components/settings/RealPracticePanel";
 import { logout } from "@/lib/actions";
 import { listRealPractices } from "@/lib/patientEnrollment";
+import { getDemoClinician } from "@/lib/queries";
 
 export default async function SettingsPage() {
-  const realPractices = await listRealPractices();
+  const [realPractices, clinician] = await Promise.all([listRealPractices(), getDemoClinician()]);
 
   return (
     <div className="w-full min-h-screen bg-background text-foreground">
-      <Sidebar />
+      <Sidebar clinicianName={clinician.name} />
       <div className="pt-24 lg:pt-10 lg:pl-[124px] p-5 sm:p-8 lg:p-10 max-w-2xl">
         <div className="font-heading font-extrabold text-xl sm:text-2xl mb-1">Settings</div>
         <div className="text-sm text-muted mb-6 sm:mb-8">Demo utilities for rehearsing the pitch.</div>

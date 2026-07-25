@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DashboardIcon, InstitutionIcon, SettingsGearIcon } from "@/components/doctor/SidebarIcons";
 import { Logo } from "@/components/Logo";
+import { initials } from "@/lib/status";
 
 const navItems = [
   { label: "Doctor dashboard", href: "/doctor", icon: DashboardIcon, match: "/doctor" },
@@ -11,7 +12,7 @@ const navItems = [
   { label: "Settings", href: "/settings", icon: SettingsGearIcon, match: "/settings" },
 ];
 
-export function Sidebar() {
+export function Sidebar({ clinicianName }: { clinicianName?: string }) {
   const pathname = usePathname();
 
   return (
@@ -34,7 +35,12 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-white/20 border-2 border-primary shrink-0 lg:mt-2" />
+      <div
+        title={clinicianName}
+        className="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-white/20 border-2 border-primary shrink-0 lg:mt-2 flex items-center justify-center font-heading font-bold text-white text-[11px] lg:text-xs"
+      >
+        {clinicianName ? initials(clinicianName) : null}
+      </div>
     </div>
   );
 }
