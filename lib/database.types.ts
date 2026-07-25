@@ -25,6 +25,8 @@ export type Database = {
           reviewed_by: string | null
           sent_at: string
           severity: string
+          source: string
+          wearable_event_id: string | null
         }
         Insert: {
           action_taken?: string | null
@@ -38,6 +40,8 @@ export type Database = {
           reviewed_by?: string | null
           sent_at?: string
           severity: string
+          source?: string
+          wearable_event_id?: string | null
         }
         Update: {
           action_taken?: string | null
@@ -51,6 +55,8 @@ export type Database = {
           reviewed_by?: string | null
           sent_at?: string
           severity?: string
+          source?: string
+          wearable_event_id?: string | null
         }
         Relationships: [
           {
@@ -79,6 +85,13 @@ export type Database = {
             columns: ["reviewed_by"]
             isOneToOne: false
             referencedRelation: "clinicians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerts_wearable_event_id_fkey"
+            columns: ["wearable_event_id"]
+            isOneToOne: false
+            referencedRelation: "wearable_events"
             referencedColumns: ["id"]
           },
         ]
@@ -359,6 +372,57 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wearable_events: {
+        Row: {
+          created_at: string
+          detail: string
+          detected_at: string
+          device: string
+          event_type: string
+          id: string
+          patient_id: string
+          severity: string
+          triggered_checkin_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detail: string
+          detected_at?: string
+          device: string
+          event_type: string
+          id?: string
+          patient_id: string
+          severity: string
+          triggered_checkin_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detail?: string
+          detected_at?: string
+          device?: string
+          event_type?: string
+          id?: string
+          patient_id?: string
+          severity?: string
+          triggered_checkin_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wearable_events_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wearable_events_triggered_checkin_id_fkey"
+            columns: ["triggered_checkin_id"]
+            isOneToOne: false
+            referencedRelation: "checkins"
             referencedColumns: ["id"]
           },
         ]

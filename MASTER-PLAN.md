@@ -75,3 +75,16 @@ Adapt content: patient list shows days-post-discharge + condition (not room numb
 
 - Practice dashboard's exact ROI numbers should trace to research/08-business-model.md figures (~$274–372/episode, HRRP penalty avg $217K) — pull real figures, don't invent new ones, per CLAUDE.md's research-citation rule.
 - Whether the patient portal ships for the actual demo or stays a described-but-unbuilt surface, given the freeze deadline — revisit once 1–4 are done.
+
+## Wearables detection layer (added 2026-07-25)
+
+Grounded in research/06-regulatory-compliance.md and research/07-market-sizing-why-now.md — do not invent wearable capabilities beyond what's sourced there.
+
+- **What's real and sourced**: Apple cleared the Hypertension Notification Feature (HTNF) — FDA 510(k) K250507, Sept 11 2025. It's a passive 30-day-pattern **notification**, not a diagnosis and not continuous clinical BP. Irregular Rhythm Notification (AFib-pattern) is a long-standing Apple Watch feature. Demo wearable data must stay inside this envelope — discrete, pre-classified notifications, not raw waveforms.
+- **Why discrete events, not raw signal streams (regulatory + UX, same answer)**: research/06 — FDA non-device CDS status requires analyzing *discrete* medical information with clinician-reviewable reasoning, not raw signal-acquisition data (PPG/ECG waveforms) — that tips into SaMD/510(k) territory. Separately, research/05's UPMC RCT negative result is explicit: unfiltered monitoring increases readmissions via alert fatigue and ED-routing bias. Both point the same direction: **event-based, not stream-based** — a small number of named, pre-classified events (hypertension notification, irregular rhythm notification, fall detected, high/low heart rate), not a live vitals feed the doctor has to watch.
+- **Data model**: new `wearable_events` table — `id, patient_id, device (e.g. "Apple Watch Series 11"), event_type (hypertension_notification | irregular_rhythm_notification | high_heart_rate | low_heart_rate | fall_detected), detected_at, detail, severity, triggered_checkin_id (nullable → checkins.id)`. `alerts` gains `source (call|letter|wearable)` and `wearable_event_id` (nullable) so a wearable-triggered alert links back to both the originating device event AND the check-in call it prompted — the doctor reviewing an alert sees the wearable signal, the follow-up call transcript, and how the patient described feeling, together in one place, not just a number.
+- **UI**: patient detail gains a "Wearable Signals" card (same visual language as Red Flags); alerts show a source icon (watch vs phone vs letter) so it's immediately clear whether a flag is event-triggered vs call-derived.
+
+## Billing / practice ROI screen — figure discipline (added 2026-07-25)
+
+Per research/02-us-hrrp-penalties-costs.md's explicit rule: **never pitch ROI off the ~$13–15K gross readmission cost** — use the avoidable-cost figure. HF avoidable cost = $2,488; general/COPD (no COPD-specific figure sourced — use the $2,140 general average, do not invent a COPD number) = $2,140. Pair with HRRP penalty exposure (avg ~$217K/hospital, FY2024) and captured TCM/RPM billing ($274–372/episode) — three separate, separately-labeled numbers, not blended into one invented "savings" figure.

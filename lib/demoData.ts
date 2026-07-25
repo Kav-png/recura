@@ -14,6 +14,18 @@ const CLINICIANS: { key: ClinicianKey; name: string; role: "physician" | "nurse"
 
 type TranscriptLine = { speaker: "agent" | "patient"; text: string };
 
+// Event types match what Apple Watch actually exposes as discrete, pre-classified notifications
+// (HTNF: FDA 510(k) K250507, Sept 2025 — see research/06-regulatory-compliance.md). We deliberately
+// model events, not raw vitals streams: FDA non-device CDS status needs discrete, clinician-reviewable
+// signals (not raw PPG/ECG waveforms), and research/05's UPMC RCT shows unfiltered streams increase
+// alert fatigue and ED-routing bias. See MASTER-PLAN.md "Wearables detection layer".
+type WearableEventType =
+  | "hypertension_notification"
+  | "irregular_rhythm_notification"
+  | "high_heart_rate"
+  | "low_heart_rate"
+  | "fall_detected";
+
 type PatientSeed = {
   name: string;
   phone: string;
@@ -35,7 +47,15 @@ type PatientSeed = {
     flagsRaised?: string[];
   };
   trend: "declining" | "stable";
-  alert?: { severity: "info" | "warn" | "danger"; message: string; reviewed: boolean; action?: string; sentHoursAgo: number };
+  alert?: { severity: "info" | "warn" | "danger"; message: string; reviewed: boolean; action?: string; sentHoursAgo: number; source?: "call" | "wearable" };
+  wearableEvent?: {
+    device: string;
+    eventType: WearableEventType;
+    detail: string;
+    severity: "info" | "warn" | "danger";
+    detectedHoursAgo: number;
+    linkToLatestCheckin: boolean;
+  };
 };
 
 const PATIENTS: PatientSeed[] = [
@@ -71,7 +91,15 @@ const PATIENTS: PatientSeed[] = [
       flagsRaised: ["swelling", "fatigue"],
     },
     trend: "declining",
-    alert: { severity: "warn", message: "Blood pressure trending upward over last hour.", reviewed: false, sentHoursAgo: 0.4 },
+    alert: { severity: "warn", message: "Apple Watch flagged a rising blood pressure pattern over the past 5 days.", reviewed: false, sentHoursAgo: 0.4, source: "wearable" },
+    wearableEvent: {
+      device: "Apple Watch Series 10",
+      eventType: "hypertension_notification",
+      detail: "Hypertension Notification: elevated blood pressure pattern detected across readings over the past 5 days. Screening-level signal, not a diagnosis or a continuous BP reading.",
+      severity: "warn",
+      detectedHoursAgo: 0.5,
+      linkToLatestCheckin: true,
+    },
   },
   {
     name: "James Whitfield",
@@ -159,6 +187,15 @@ const PATIENTS: PatientSeed[] = [
       proms: 91,
     },
     trend: "stable",
+    alert: { severity: "warn", message: "Apple Watch detected a possible hard fall at home; no follow-up call yet.", reviewed: false, sentHoursAgo: 2.5, source: "wearable" },
+    wearableEvent: {
+      device: "Apple Watch Series 8",
+      eventType: "fall_detected",
+      detail: "Fall Detected: hard fall detected at home. Patient did not respond to the on-wrist check-in prompt within the expected window.",
+      severity: "warn",
+      detectedHoursAgo: 2.5,
+      linkToLatestCheckin: false,
+    },
   },
   {
     name: "Sofia Ibarra",
@@ -239,7 +276,15 @@ const PATIENTS: PatientSeed[] = [
       flagsRaised: ["dizziness"],
     },
     trend: "stable",
-    alert: { severity: "info", message: "Mild dizziness reported during check-in.", reviewed: true, action: "none", sentHoursAgo: 11 },
+    alert: { severity: "info", message: "Apple Watch flagged an irregular heart rhythm consistent with possible AFib.", reviewed: true, action: "none", sentHoursAgo: 11, source: "wearable" },
+    wearableEvent: {
+      device: "Apple Watch Series 9",
+      eventType: "irregular_rhythm_notification",
+      detail: "Irregular Rhythm Notification: pattern consistent with possible atrial fibrillation detected during a period of rest.",
+      severity: "info",
+      detectedHoursAgo: 11.2,
+      linkToLatestCheckin: true,
+    },
   },
   {
     name: "Miguel Ortiz",
@@ -270,7 +315,15 @@ const PATIENTS: PatientSeed[] = [
       flagsRaised: ["severe_breathlessness", "cyanosis"],
     },
     trend: "declining",
-    alert: { severity: "danger", message: "Severe breathlessness at rest with possible cyanosis — 999 advised, immediate review required.", reviewed: false, sentHoursAgo: 0.18 },
+    alert: { severity: "danger", message: "Apple Watch flagged a high resting heart rate, followed by a call confirming severe breathlessness — 999 advised, immediate review required.", reviewed: false, sentHoursAgo: 0.18, source: "wearable" },
+    wearableEvent: {
+      device: "Apple Watch Series 10",
+      eventType: "high_heart_rate",
+      detail: "High Heart Rate Notification: resting heart rate elevated to 118 bpm, well above baseline.",
+      severity: "danger",
+      detectedHoursAgo: 0.2,
+      linkToLatestCheckin: true,
+    },
   },
 ];
 
@@ -304,7 +357,7 @@ export async function reloadDemoData() {
   const supabase = supabaseServer();
 
   // Wipe existing demo data (dependency order)
-  for (const table of ["billing_events", "alerts", "checkins", "red_flags", "medications", "patients", "clinicians", "practices"] as const) {
+  for (const table of ["billing_events", "alerts", "wearable_events", "checkins", "red_flags", "medications", "patients", "clinicians", "practices"] as const) {
     const { error } = await supabase.from(table).delete().not("id", "is", null);
     if (error) throw error;
   }
@@ -407,7 +460,27 @@ export async function reloadDemoData() {
     );
     if (historyErr) throw historyErr;
 
+    let wearableEventId: string | null = null;
+    if (p.wearableEvent) {
+      const { data: wearableEvent, error: weErr } = await supabase
+        .from("wearable_events")
+        .insert({
+          patient_id: patient.id,
+          device: p.wearableEvent.device,
+          event_type: p.wearableEvent.eventType,
+          detail: p.wearableEvent.detail,
+          severity: p.wearableEvent.severity,
+          detected_at: hoursAgoIso(p.wearableEvent.detectedHoursAgo),
+          triggered_checkin_id: p.wearableEvent.linkToLatestCheckin ? latestCheckin.id : null,
+        })
+        .select()
+        .single();
+      if (weErr) throw weErr;
+      wearableEventId = wearableEvent.id;
+    }
+
     if (p.alert) {
+      const source = p.alert.source ?? "call";
       const { error } = await supabase.from("alerts").insert({
         patient_id: patient.id,
         checkin_id: latestCheckin.id,
@@ -418,6 +491,8 @@ export async function reloadDemoData() {
         reviewed_at: p.alert.reviewed ? hoursAgoIso(p.alert.sentHoursAgo - 0.05) : null,
         action_taken: p.alert.reviewed ? p.alert.action ?? "none" : "none",
         sent_at: hoursAgoIso(p.alert.sentHoursAgo),
+        source,
+        wearable_event_id: source === "wearable" ? wearableEventId : null,
       });
       if (error) throw error;
     }
@@ -427,8 +502,8 @@ export async function reloadDemoData() {
       p.tcmContactDone
         ? { code: "99495", amount: 201.0, status: "captured" as const }
         : null,
-      { code: "99445", amount: 47.0, status: (p.rpmDays >= 2 ? "captured" : "pending") as const },
-      { code: "99470", amount: 26.0, status: (p.rpmDays >= 2 ? "captured" : "pending") as const },
+      { code: "99445", amount: 47.0, status: (p.rpmDays >= 2 ? "captured" : "pending") as "captured" | "pending" },
+      { code: "99470", amount: 26.0, status: (p.rpmDays >= 2 ? "captured" : "pending") as "captured" | "pending" },
     ].filter(Boolean) as { code: string; amount: number; status: "captured" | "pending" }[];
 
     const { error: billingErr } = await supabase.from("billing_events").insert(

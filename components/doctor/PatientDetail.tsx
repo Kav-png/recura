@@ -1,4 +1,5 @@
 import { severityMeta, daysSince, timeAgo, type Severity } from "@/lib/status";
+import { CheckinCallButton } from "@/components/doctor/CheckinCallButton";
 
 type Patient = {
   id: string;
@@ -25,12 +26,29 @@ type Checkin = {
 };
 type Alert = { id: string; severity: string; message: string; sent_at: string; reviewed_at: string | null; action_taken: string | null };
 type BillingEvent = { id: string; code: string; amount: number; status: string };
+type WearableEvent = {
+  id: string;
+  device: string;
+  event_type: string;
+  detail: string;
+  severity: string;
+  detected_at: string;
+  triggered_checkin_id: string | null;
+};
 
 const CODE_LABELS: Record<string, string> = {
   "99495": "TCM — moderate complexity (2-day contact)",
   "99496": "TCM — high complexity (2-day contact)",
   "99445": "RPM device supply (2–15 days data)",
   "99470": "RPM management, first 10 min",
+};
+
+const WEARABLE_EVENT_LABELS: Record<string, string> = {
+  hypertension_notification: "Hypertension Notification",
+  irregular_rhythm_notification: "Irregular Rhythm Notification",
+  high_heart_rate: "High Heart Rate",
+  low_heart_rate: "Low Heart Rate",
+  fall_detected: "Fall Detected",
 };
 
 const medStatusColor: Record<string, string> = {
@@ -81,6 +99,7 @@ export function PatientDetail({
   checkins,
   alerts,
   billing,
+  wearableEvents,
 }: {
   patient: Patient;
   medications: Medication[];
@@ -88,6 +107,7 @@ export function PatientDetail({
   checkins: Checkin[];
   alerts: Alert[];
   billing: BillingEvent[];
+  wearableEvents: WearableEvent[];
 }) {
   const worstAlert = alerts.filter((a) => !a.reviewed_at).sort((a, b) => {
     const rank: Record<string, number> = { danger: 3, warn: 2, info: 1 };
@@ -115,9 +135,12 @@ export function PatientDetail({
             </div>
           </div>
         </div>
-        <div className={`px-3.5 sm:px-4 py-2 rounded-[10px] text-[12.5px] sm:text-[13px] font-semibold ${statusMeta.bg} ${statusMeta.text}`}>
-          {statusMeta.label}
-          {worstAlert ? ` · ${worstAlert.message}` : " · No unreviewed alerts"}
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className={`px-3.5 sm:px-4 py-2 rounded-[10px] text-[12.5px] sm:text-[13px] font-semibold ${statusMeta.bg} ${statusMeta.text}`}>
+            {statusMeta.label}
+            {worstAlert ? ` · ${worstAlert.message}` : " · No unreviewed alerts"}
+          </div>
+          <CheckinCallButton patientId={patient.id} patientName={patient.name} />
         </div>
       </div>
 
@@ -148,6 +171,39 @@ export function PatientDetail({
                   <div className="text-[13px] font-bold">{f.title}</div>
                   <div className="text-[12.5px] text-foreground/70 mt-0.5 leading-snug">{f.explanation_plain_english}</div>
                   <div className="text-[11px] text-muted mt-1 capitalize">Source: {f.source}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Wearable signals */}
+      {wearableEvents.length > 0 && (
+        <div className="bg-surface rounded-2xl border border-border p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-3.5">
+            <div className="font-heading font-bold text-[15px]">Wearable Signals</div>
+            <div className="text-xs text-muted hidden sm:block">Discrete device notifications, not continuous monitoring</div>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            {wearableEvents.map((w) => {
+              const meta = severityMeta[w.severity as Severity];
+              const linkedCheckin = w.triggered_checkin_id ? checkins.find((c) => c.id === w.triggered_checkin_id) : null;
+              return (
+                <div key={w.id} className={`p-3 rounded-xl ${meta.bg}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="text-[13px] font-bold">{WEARABLE_EVENT_LABELS[w.event_type] ?? w.event_type}</div>
+                    <div className="text-[11px] text-muted shrink-0">{timeAgo(w.detected_at)}</div>
+                  </div>
+                  <div className="text-[12.5px] text-foreground/70 mt-0.5 leading-snug">{w.detail}</div>
+                  <div className="text-[11px] text-muted mt-1">{w.device}</div>
+                  {linkedCheckin ? (
+                    <div className="mt-2 pt-2 border-t border-black/10 text-[12px]">
+                      <span className="font-semibold">Follow-up call</span> ({timeAgo(linkedCheckin.called_at)}, PROMs {linkedCheckin.proms_score ?? "—"}, felt {linkedCheckin.mood ?? "unknown"}): &ldquo;{linkedCheckin.summary}&rdquo; — see full transcript in Check-in History below.
+                    </div>
+                  ) : (
+                    <div className="mt-2 pt-2 border-t border-black/10 text-[12px] font-semibold">No follow-up call yet.</div>
+                  )}
                 </div>
               );
             })}

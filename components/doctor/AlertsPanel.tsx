@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { Watch, Phone, FileText } from "lucide-react";
 import { severityMeta, timeAgo, type Severity } from "@/lib/status";
 import { reviewAlert } from "@/lib/actions";
 
@@ -11,7 +12,14 @@ type Alert = {
   sent_at: string;
   reviewed_at: string | null;
   action_taken: string | null;
+  source: string;
   patients: { name: string } | null;
+};
+
+const SOURCE_META: Record<string, { icon: typeof Watch; label: string }> = {
+  wearable: { icon: Watch, label: "Detected via wearable" },
+  call: { icon: Phone, label: "Reported on check-in call" },
+  letter: { icon: FileText, label: "From discharge letter" },
 };
 
 export function AlertsPanel({ alerts }: { alerts: Alert[] }) {
@@ -32,10 +40,15 @@ export function AlertsPanel({ alerts }: { alerts: Alert[] }) {
         {alerts.length === 0 && <div className="text-sm text-muted">No alerts.</div>}
         {alerts.map((a) => {
           const meta = severityMeta[a.severity as Severity];
+          const sourceMeta = SOURCE_META[a.source] ?? SOURCE_META.call;
+          const SourceIcon = sourceMeta.icon;
           return (
             <div key={a.id} className={`p-3 rounded-xl ${meta.bg}`}>
               <div className="flex items-start justify-between gap-2">
-                <div className="text-[13px] font-bold text-foreground">{a.patients?.name ?? "Unknown patient"}</div>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <SourceIcon size={13} className="text-foreground/50 shrink-0" aria-label={sourceMeta.label} />
+                  <div className="text-[13px] font-bold text-foreground truncate">{a.patients?.name ?? "Unknown patient"}</div>
+                </div>
                 <div className="text-[11px] text-muted shrink-0">{timeAgo(a.sent_at)}</div>
               </div>
               <div className="text-[12.5px] text-foreground/70 mt-0.5 leading-snug">{a.message}</div>

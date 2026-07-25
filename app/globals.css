@@ -37,7 +37,11 @@
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(ellipse 1200px 600px at 15% -10%, oklch(85% 0.05 45 / 0.5), transparent 60%),
+    radial-gradient(ellipse 1000px 700px at 100% 0%, oklch(88% 0.04 150 / 0.35), transparent 55%),
+    var(--background);
+  background-attachment: fixed;
   color: var(--foreground);
 }
 

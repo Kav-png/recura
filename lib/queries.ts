@@ -61,13 +61,14 @@ export async function getPatientPanel(practiceId: string) {
 export async function getPatientDetail(patientId: string) {
   const supabase = supabaseServer();
 
-  const [{ data: patient, error: pErr }, meds, flags, checkins, alerts, billing] = await Promise.all([
+  const [{ data: patient, error: pErr }, meds, flags, checkins, alerts, billing, wearableEvents] = await Promise.all([
     supabase.from("patients").select("*, clinicians(name, role)").eq("id", patientId).single(),
     supabase.from("medications").select("*").eq("patient_id", patientId).order("name"),
     supabase.from("red_flags").select("*").eq("patient_id", patientId).order("severity", { ascending: false }),
     supabase.from("checkins").select("*").eq("patient_id", patientId).order("called_at", { ascending: true }),
     supabase.from("alerts").select("*").eq("patient_id", patientId).order("sent_at", { ascending: false }),
     supabase.from("billing_events").select("*").eq("patient_id", patientId).order("code"),
+    supabase.from("wearable_events").select("*").eq("patient_id", patientId).order("detected_at", { ascending: false }),
   ]);
 
   if (pErr) throw pErr;
@@ -79,6 +80,7 @@ export async function getPatientDetail(patientId: string) {
     checkins: checkins.data ?? [],
     alerts: alerts.data ?? [],
     billing: billing.data ?? [],
+    wearableEvents: wearableEvents.data ?? [],
   };
 }
 
@@ -124,4 +126,31 @@ export async function getUpcomingCheckins(practiceId: string) {
     .filter((s) => s.nextCheckin)
     .sort((a, b) => (a.nextCheckin!.getTime() - b.nextCheckin!.getTime()))
     .slice(0, 6);
+}
+
+export async function getPracticeOverview(practiceId: string) {
+  const supabase = supabaseServer();
+
+  const [{ data: practice, error: prErr }, { data: clinicians, error: clErr }, { data: patients, error: ptErr }] =
+    await Promise.all([
+      supabase.from("practices").select("*").eq("id", practiceId).single(),
+      supabase.from("clinicians").select("*").eq("practice_id", practiceId).order("name"),
+      supabase.from("patients").select("*").eq("practice_id", practiceId).order("name"),
+    ]);
+  if (prErr) throw prErr;
+  if (clErr) throw clErr;
+  if (ptErr) throw ptErr;
+
+  const patientIds = (patients ?? []).map((p) => p.id);
+  const { data: billing, error: bErr } = patientIds.length
+    ? await supabase.from("billing_events").select("*").in("patient_id", patientIds)
+    : { data: [], error: null };
+  if (bErr) throw bErr;
+
+  return {
+    practice,
+    clinicians: clinicians ?? [],
+    patients: patients ?? [],
+    billing: billing ?? [],
+  };
 }
