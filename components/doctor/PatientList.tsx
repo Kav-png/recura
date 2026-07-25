@@ -19,7 +19,7 @@ export function PatientList({ patients }: { patients: PanelPatient[] }) {
   const pathname = usePathname();
   const selectedId = pathname?.split("/doctor/")[1];
   return (
-    <div className="bg-surface rounded-2xl border border-border overflow-hidden flex flex-col">
+    <div className="glass rounded-2xl overflow-hidden flex flex-col">
       <div className="px-4.5 pt-4.5 pb-3 flex items-center justify-between">
         <div className="font-heading font-bold text-[15px]">My Patients</div>
         <div className="text-xs text-muted bg-muted-bg px-2.5 py-0.5 rounded-full">{patients.length} active</div>

@@ -28,7 +28,7 @@ export function Topbar({
       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
         <SearchBox patients={patients} />
         <AddPatientButton />
-        <div className="relative w-10 h-10 lg:w-11 lg:h-11 rounded-xl bg-muted-bg flex items-center justify-center shrink-0">
+        <div className="relative w-10 h-10 lg:w-11 lg:h-11 rounded-xl glass-sm flex items-center justify-center shrink-0">
           <Bell size={18} className="text-foreground/70" />
           {unreadAlertCount > 0 && (
             <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-critical border-2 border-surface" />

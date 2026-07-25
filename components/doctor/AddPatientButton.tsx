@@ -58,10 +58,10 @@ export function AddPatientButton() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={close}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={close}>
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-surface rounded-2xl border border-border p-5 sm:p-6"
+            className="w-full max-w-md glass-strong rounded-2xl p-5 sm:p-6"
           >
             <div className="flex items-center justify-between mb-4">
               <div className="font-heading font-bold text-[15px]">Onboard new patient</div>

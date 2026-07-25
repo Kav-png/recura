@@ -22,7 +22,7 @@ export function Sidebar({ clinicianName }: { clinicianName?: string }) {
   const pathname = usePathname();
 
   return (
-    <div className="fixed z-40 top-3 left-3 right-3 lg:right-auto lg:top-4 lg:left-4 lg:w-[88px] bg-sidebar rounded-3xl shadow-lg shadow-black/10 flex flex-row lg:flex-col items-center justify-between lg:justify-start px-4 lg:px-0 py-2.5 lg:py-7 gap-0 lg:gap-8">
+    <div className="fixed z-40 top-3 left-3 right-3 lg:right-auto lg:top-4 lg:left-4 lg:w-[88px] glass-dark rounded-3xl flex flex-row lg:flex-col items-center justify-between lg:justify-start px-4 lg:px-0 py-2.5 lg:py-7 gap-0 lg:gap-8">
       <motion.div
         whileHover={{ scale: 1.08, rotate: 6 }}
         whileTap={{ scale: 0.92 }}
