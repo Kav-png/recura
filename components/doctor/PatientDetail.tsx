@@ -90,7 +90,7 @@ function TrendChart({
   const max = 100;
 
   const dischargeMs = new Date(dischargeDate).getTime();
-  const totalDays = Math.max(1, (Date.now() - dischargeMs) / 86400000);
+  const totalDays = Math.max(1, daysSince(dischargeDate));
   const dayOffset = (iso: string) => (new Date(iso).getTime() - dischargeMs) / 86400000;
   const xForDay = (day: number) => pad + (Math.min(Math.max(day, 0), totalDays) / totalDays) * (w - pad * 2);
 
