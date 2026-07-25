@@ -27,13 +27,13 @@ export function SelfCheckinForm({ patientId }: { patientId: string }) {
 
   return (
     <Card title="How am I doing today?" subtitle="A quick note between your daily calls — this isn&rsquo;t monitored in real time.">
-      <div className="flex gap-2 flex-wrap">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {SELF_CHECKIN_MOODS.map((m) => (
           <button
             key={m.value}
             type="button"
             onClick={() => setMood(m.value)}
-            className={`flex-1 min-w-[70px] flex flex-col items-center gap-1 py-3.5 rounded-2xl border-2 transition-colors ${
+            className={`flex flex-col items-center gap-1 py-3.5 rounded-2xl border-2 transition-colors ${
               mood === m.value ? "border-primary bg-primary/10" : "border-border bg-muted-bg/50"
             }`}
           >
