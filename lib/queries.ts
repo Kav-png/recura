@@ -160,6 +160,29 @@ export async function getBillingDocument(patientId: string) {
   return { patient, billing: billing ?? [] };
 }
 
+export async function getBillingRun(practiceId: string) {
+  const supabase = supabaseServer();
+
+  const [{ data: practice, error: prErr }, { data: patients, error: pErr }] = await Promise.all([
+    supabase.from("practices").select("name").eq("id", practiceId).single(),
+    supabase
+      .from("patients")
+      .select("id, name, condition, clinicians!patients_clinician_id_fkey(name)")
+      .eq("practice_id", practiceId)
+      .order("name"),
+  ]);
+  if (prErr) throw prErr;
+  if (pErr) throw pErr;
+
+  const patientIds = (patients ?? []).map((p) => p.id);
+  const { data: billing, error: bErr } = patientIds.length
+    ? await supabase.from("billing_events").select("patient_id, code, amount, status").in("patient_id", patientIds)
+    : { data: [], error: null };
+  if (bErr) throw bErr;
+
+  return { practice, patients: patients ?? [], billing: billing ?? [] };
+}
+
 export async function getPracticeOverview(practiceId: string) {
   const supabase = supabaseServer();
 

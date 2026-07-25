@@ -17,7 +17,12 @@ type BillingCodeRow = {
 export function BillingByCode({ rows }: { rows: BillingCodeRow[] }) {
   return (
     <div className="bg-surface rounded-2xl border border-border p-4 sm:p-5">
-      <div className="font-heading font-bold text-[15px] mb-3.5">Billing Status by CPT Code</div>
+      <div className="flex items-center justify-between mb-3.5">
+        <div className="font-heading font-bold text-[15px]">Billing Status by CPT Code</div>
+        <a href="/practice/billing" target="_blank" rel="noopener noreferrer" className="text-[12px] font-semibold text-primary hover:underline">
+          Export billing run →
+        </a>
+      </div>
       <div className="flex flex-col">
         {rows.map((r) => (
           <div key={r.code} className="py-2.5 border-b border-border/60 last:border-0">

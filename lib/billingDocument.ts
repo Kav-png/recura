@@ -18,6 +18,64 @@ export type SuperbillInput = {
 
 export type SuperbillLine = { code: string; label: string; dx: string; amount: number; status: string };
 
+export type BillingRunRow = {
+  patientName: string;
+  clinicianName: string;
+  code: string;
+  label: string;
+  dx: string;
+  amount: number;
+  status: string;
+};
+
+export type BillingRunDoc = {
+  practiceName: string;
+  generatedAt: string;
+  rows: BillingRunRow[];
+  readyTotal: number;
+  pendingTotal: number;
+};
+
+/**
+ * The practice-level counterpart to buildSuperbill: every billable/pending row across every
+ * patient, in one document a biller can actually work from to submit a batch of claims — instead
+ * of the practice dashboard just showing a captured-dollar-total with nothing behind it.
+ */
+export function buildBillingRun(
+  practiceName: string,
+  patients: { id: string; name: string; condition: string; clinicians: { name: string } | null }[],
+  billing: { patient_id: string; code: string; amount: number; status: string }[]
+): BillingRunDoc {
+  const patientById = new Map(patients.map((p) => [p.id, p]));
+
+  const rows: BillingRunRow[] = billing
+    .map((b) => {
+      const patient = patientById.get(b.patient_id);
+      if (!patient) return null;
+      const dx = ICD10_BY_CONDITION[patient.condition]?.code ?? "Z09";
+      const row: BillingRunRow = {
+        patientName: patient.name,
+        clinicianName: patient.clinicians?.name ?? "Unassigned",
+        code: b.code,
+        label: CPT_RATES[b.code]?.label ?? b.code,
+        dx,
+        amount: b.amount,
+        status: b.status,
+      };
+      return row;
+    })
+    .filter((r): r is BillingRunRow => r !== null)
+    .sort((a, b) => a.patientName.localeCompare(b.patientName));
+
+  return {
+    practiceName,
+    generatedAt: new Date().toISOString(),
+    rows,
+    readyTotal: rows.filter((r) => r.status === "captured").reduce((sum, r) => sum + r.amount, 0),
+    pendingTotal: rows.filter((r) => r.status !== "captured").reduce((sum, r) => sum + r.amount, 0),
+  };
+}
+
 export type SuperbillDoc = {
   practice: { name: string };
   clinician: { name: string; role: string };
