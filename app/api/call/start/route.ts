@@ -26,10 +26,7 @@ export async function POST(request: Request) {
     if (!agentId) return NextResponse.json({ error: "ELEVENLABS_AGENT_ID is not configured." }, { status: 500 });
     if (!apiKey) return NextResponse.json({ error: "ELEVENLABS_API_KEY is not configured." }, { status: 500 });
     if (!phoneNumberId) {
-      return NextResponse.json(
-        { error: "ELEVENLABS_PHONE_NUMBER_ID is not configured — provision a number in the ElevenLabs dashboard first." },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Waiting on Twilio number verification — real calls will work once it's approved." }, { status: 503 });
     }
 
     const { patientId } = await request.json();
