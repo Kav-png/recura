@@ -5,13 +5,14 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getCurrentClinician } from "@/lib/queries";
-import { SESSION_COOKIE, isValidAccessCode, sessionTokenForCode } from "@/lib/auth";
+import { SESSION_COOKIE, isValidAccessCode, sessionTokenForCode, PATIENT_SESSION_COOKIE, patientSessionCookieValue } from "@/lib/auth";
 import { pickPrimaryMedication, promQuestionFor, type TranscriptLine } from "@/lib/checkinExtraction";
 import { computeExpectedBilling } from "@/lib/billing";
 import { emergencyNumberFor, isCountryCode } from "@/lib/emergency";
 import { persistCheckin } from "@/lib/checkinPersist";
 import { logAudit } from "@/lib/audit";
 import { DEMO_ADMIN_EMAIL, DEMO_CLINICIAN_PASSWORD } from "@/lib/demoClinicians";
+import { generatePatientAccessCode } from "@/lib/patientAccessCode";
 
 export type LiveContactMethod = "phone_live" | "video_live" | "in_person";
 export type TcmMdmLevel = "moderate" | "high";
@@ -157,20 +158,46 @@ export async function submitAccessCode(formData: FormData) {
   const code = String(formData.get("code") ?? "").trim();
   const next = String(formData.get("next") ?? "/patient");
 
-  if (!isValidAccessCode(code)) {
-    redirect(`/login?error=1&next=${encodeURIComponent(next)}`);
-  }
-
   if (next.startsWith("/patient")) {
+    if (isValidAccessCode(code)) {
+      const cookieStore = await cookies();
+      // Clear any lingering single-patient session — otherwise proxy.ts's patient-scoped cookie
+      // (which deliberately takes priority) would keep this browser pinned to that one patient
+      // even after the shared staff code is used to get back to the picker.
+      cookieStore.delete(PATIENT_SESSION_COOKIE);
+      cookieStore.set(SESSION_COOKIE, sessionTokenForCode(code), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 12,
+      });
+      redirect(next.startsWith("/") ? next : "/patient");
+    }
+
+    // Not the shared practice code — check whether it's one patient's own portal code
+    // (lib/patientAccessCode.ts). That session is scoped to exactly that patient by proxy.ts,
+    // regardless of what `next` asked for.
+    const supabase = await supabaseServer();
+    const { data: patient } = await supabase.from("patients").select("id").eq("access_code", code).maybeSingle();
+    if (!patient) {
+      redirect(`/login?error=1&next=${encodeURIComponent(next)}`);
+    }
+
     const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE, sessionTokenForCode(code), {
+    cookieStore.delete(SESSION_COOKIE);
+    cookieStore.set(PATIENT_SESSION_COOKIE, patientSessionCookieValue(patient.id), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 12,
+      maxAge: 60 * 60 * 24 * 30,
     });
-    redirect(next.startsWith("/") ? next : "/patient");
+    redirect(`/patient/${patient.id}`);
+  }
+
+  if (!isValidAccessCode(code)) {
+    redirect(`/login?error=1&next=${encodeURIComponent(next)}`);
   }
 
   // Shared demo code, but heading for a clinician-facing route (/doctor, /practice, /settings):
@@ -294,6 +321,7 @@ export async function addPatient(input: NewPatientInput) {
       is_demo: true,
       enrolled_at: now,
       consent_captured_at: now,
+      access_code: generatePatientAccessCode(),
     })
     .select()
     .single();

@@ -6,6 +6,7 @@ import { computeExpectedBilling } from "@/lib/billing";
 import { DEFAULT_COUNTRY, emergencyNumberFor } from "@/lib/emergency";
 import { ensureClinicianAuthUser } from "@/lib/clinicianAuth";
 import { DEMO_ADMIN_EMAIL, DEMO_NP_EMAIL, DEMO_CLINICIAN_PASSWORD } from "@/lib/demoClinicians";
+import { generatePatientAccessCode } from "@/lib/patientAccessCode";
 
 const PRACTICE_NAME = "Riverside Cardiology & Pulmonology Group";
 // Seed transcripts/alert text are static strings baked in at reseed time, matching whatever the
@@ -600,6 +601,7 @@ export async function reloadDemoData() {
         // contact and the RPM monthly interactive communication to be made by a human clinician via live,
         // synchronous contact — AI/automated messaging cannot satisfy either billing requirement.
         consent_captured_at: hoursAgoIso(p.dischargeDaysAgo * 24),
+        access_code: generatePatientAccessCode(),
         tcm_contact_by: p.tcmContactDone ? clinicianIds[p.clinician] : null,
         tcm_contact_method: p.tcmContactDone ? "phone_live" : null,
         tcm_med_reconciliation_at: p.tcmContactDone && tcmMedReconDoneFor(p) ? hoursAgoIso((p.tcmContactDaysAgo ?? p.dischargeDaysAgo) * 24) : null,

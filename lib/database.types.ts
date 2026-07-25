@@ -344,6 +344,7 @@ export type Database = {
       }
       patients: {
         Row: {
+          access_code: string | null
           clinician_id: string | null
           condition: string
           consent_captured_at: string | null
@@ -372,6 +373,7 @@ export type Database = {
           tcm_med_reconciliation_at: string | null
         }
         Insert: {
+          access_code?: string | null
           clinician_id?: string | null
           condition: string
           consent_captured_at?: string | null
@@ -400,6 +402,7 @@ export type Database = {
           tcm_med_reconciliation_at?: string | null
         }
         Update: {
+          access_code?: string | null
           clinician_id?: string | null
           condition?: string
           consent_captured_at?: string | null

@@ -13,6 +13,7 @@ type Patient = {
   resuscitation_status: string | null;
   emergency_contact_name: string | null;
   follow_up_clinic: string | null;
+  access_code: string | null;
   tcm_contact_done: boolean;
   tcm_contact_date: string | null;
   tcm_contact_method: string | null;
@@ -199,6 +200,15 @@ export function PatientDetail({
                 )}
                 {patient.emergency_contact_name && <span>Emergency contact: {patient.emergency_contact_name}</span>}
                 {patient.follow_up_clinic && <span>Follow-up: {patient.follow_up_clinic}</span>}
+              </div>
+            )}
+            {patient.access_code && (
+              <div className="text-[11.5px] text-muted mt-1.5">
+                Patient portal code:{" "}
+                <span className="font-mono font-semibold tracking-wider text-foreground/80 bg-muted-bg px-1.5 py-0.5 rounded">
+                  {patient.access_code}
+                </span>
+                <span className="ml-1">— give this to the patient; it opens only their own portal page.</span>
               </div>
             )}
           </div>

@@ -68,7 +68,10 @@ Two different actors, two different mechanisms:
 | Actor | Routes | Mechanism | Scoping |
 |---|---|---|---|
 | Clinician | `/doctor`, `/practice`, `/settings` | Supabase Auth (email + password) | Postgres RLS: own patients, or all if `is_admin` |
-| Patient | `/patient` | Shared practice access code | Not applicable — a link, not an account |
+| Patient (staff/demo) | `/patient` | Shared practice access code | None — opens the picker and any patient |
+| Patient (individual) | `/patient/[id]` | That patient's own `access_code` | Locked to exactly one patient — no picker, no other patient's chart, even by direct URL |
+
+The individual patient code (`lib/patientAccessCode.ts`, shown to the clinician on the patient's detail page as "Patient portal code") is the one you'd actually hand to a real patient — it signs into a session cookie scoped to that one `patientId` (`proxy.ts` redirects any other `/patient/*` path, including the bare picker, straight back to their own page). The shared code above is a staff/demo convenience for browsing the whole panel, not something a patient should have.
 
 **Why RLS instead of an app-level `WHERE clinician_id = ...` filter:** an app-level filter only holds if every query remembers to apply it. RLS makes the database itself refuse the row, so a missed filter fails closed instead of leaking data — confirmed above by the 404 test. The demo practice is seeded with one admin (Dr. Alvarez, sees all 10 patients) and one non-admin (Chidinma Obi, NP, sees only her 4 assigned patients) specifically so logging in as each shows a genuinely different, correctly-scoped panel rather than two logins into the same view.
 

@@ -17,7 +17,7 @@ export default async function LoginPage({
 
         {isPatientPortal ? (
           <>
-            <div className="text-sm text-muted mb-6">Discharge Safety Net · Enter the practice access code to continue.</div>
+            <div className="text-sm text-muted mb-6">Discharge Safety Net · Enter your access code to continue.</div>
             <form action={submitAccessCode} className="flex flex-col gap-3">
               <input type="hidden" name="next" value={next ?? "/patient"} />
               <div>
@@ -30,6 +30,9 @@ export default async function LoginPage({
                   className="w-full px-3.5 py-2.5 rounded-[10px] border border-border text-[13.5px] focus:outline-none focus:border-primary focus:ring-3 focus:ring-primary/15"
                   placeholder="Enter code"
                 />
+                <div className="text-[11.5px] text-muted mt-1.5">
+                  Use the personal code your clinician gave you to see only your own plan.
+                </div>
               </div>
               {error && <div className="text-[12.5px] text-critical">That code isn&apos;t right. Try again.</div>}
               <button

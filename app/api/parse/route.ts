@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getCurrentClinician } from "@/lib/queries";
 import { parseLetterImage, isSupportedImageType } from "@/lib/letterParse";
+import { generatePatientAccessCode } from "@/lib/patientAccessCode";
 
 export async function POST(request: Request) {
   try {
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
         is_demo: true,
         enrolled_at: now,
         consent_captured_at: now,
+        access_code: generatePatientAccessCode(),
       })
       .select()
       .single();
