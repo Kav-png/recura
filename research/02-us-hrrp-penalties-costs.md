@@ -18,6 +18,7 @@
 | Average cost per 30-day readmission | ~$13,200 (range $8,500–18,700, HCUP 2021); ~$15,200 (AHRQ 2018 via Allina/Health Catalyst) | HCUP/AHRQ | A/B |
 | **Avoidable expected cost per AVOIDED readmission** (use THIS for ROI math) | ~$2,140 avg; HF $2,488; AMI $3,432; pneumonia $2,278 | Carey & Stefos 2015 (via deep-research report) | A |
 | HF 30-day readmission rate | 22.3–23%; ~1.3M HF hospitalizations/yr; COPD ~20%, ~650K/yr | Medicare 5% sample study; Biofourmis/Beacon PR | A/C |
+| General Medicare 30-day all-cause readmission rate (no clean condition-specific rate found for AMI/pneumonia — use this as the fallback baseline for those two, same rule as the $2,140 general-cost fallback above) | 19.6% (of 11.86M at-risk FFS discharges, Oct 2003–Sep 2004; $17.4B cost to Medicare that year) | Jencks, Williams & Coleman, NEJM 2009 (doi: 10.1056/NEJMsa0803563) | A |
 | Mean HF hospitalization cost | ~$14,631 | national Medicare 5% sample (n=63,678) | A |
 | Preventable 30-day readmission share, Medicare | ~13.3% of patients | deep-research report (HCUP-derived) | B |
 | Readmissions to a DIFFERENT hospital | >25%, adding $21B excess cost | Vizient 2025 report via IntuitionLabs | B |

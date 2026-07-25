@@ -1,6 +1,8 @@
 export const CONDITION_LABELS: Record<string, string> = {
   HF: "heart failure",
   COPD: "COPD",
+  AMI: "a heart attack",
+  Pneumonia: "pneumonia",
 };
 
 export const MOOD_META: Record<string, { label: string; emoji: string }> = {

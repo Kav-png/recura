@@ -7,7 +7,7 @@ export function EnrollmentFunnel({
   enrolled: number;
   tcmDone: number;
   rpmReporting: number;
-  byCondition: { HF: number; COPD: number };
+  byCondition: Record<string, number>;
 }) {
   const stages = [
     { label: "Enrolled", value: enrolled },
@@ -38,13 +38,12 @@ export function EnrollmentFunnel({
           </div>
         ))}
       </div>
-      <div className="flex gap-4 sm:gap-6 mt-4 pt-3.5 border-t border-border/60 text-[12.5px]">
-        <div>
-          <span className="font-semibold">{byCondition.HF}</span> <span className="text-muted">HF enrolled</span>
-        </div>
-        <div>
-          <span className="font-semibold">{byCondition.COPD}</span> <span className="text-muted">COPD enrolled</span>
-        </div>
+      <div className="flex flex-wrap gap-4 sm:gap-6 mt-4 pt-3.5 border-t border-border/60 text-[12.5px]">
+        {Object.entries(byCondition).map(([condition, count]) => (
+          <div key={condition}>
+            <span className="font-semibold">{count}</span> <span className="text-muted">{condition} enrolled</span>
+          </div>
+        ))}
       </div>
     </div>
   );

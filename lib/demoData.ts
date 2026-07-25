@@ -30,7 +30,7 @@ type PatientSeed = {
   name: string;
   phone: string;
   dischargeDaysAgo: number;
-  condition: "HF" | "COPD";
+  condition: "HF" | "COPD" | "AMI" | "Pneumonia";
   clinician: ClinicianKey;
   tcmContactDone: boolean;
   tcmContactDaysAgo?: number;
@@ -325,13 +325,83 @@ const PATIENTS: PatientSeed[] = [
       linkToLatestCheckin: true,
     },
   },
+  {
+    name: "Daniela Costa",
+    phone: "+15550109",
+    dischargeDaysAgo: 6,
+    condition: "AMI",
+    clinician: "doc",
+    tcmContactDone: true,
+    tcmContactDaysAgo: 5,
+    f2fOffsetDays: 3,
+    rpmDays: 6,
+    medications: [
+      { name: "Clopidogrel", dose: "75mg", frequency: "Once daily", status: "new", reason: "Dual antiplatelet therapy started after stent placement" },
+      { name: "Atorvastatin", dose: "80mg", frequency: "Once daily", status: "new", reason: "High-intensity statin started post-MI" },
+      { name: "Metoprolol", dose: "25mg", frequency: "Twice daily", status: "unchanged" },
+    ],
+    redFlags: [
+      { severity: "warn", title: "Bruising on dual antiplatelet therapy", explanation: "You're on two blood-thinning medicines after your heart procedure, which can cause more bruising than usual. This is expected but check with your pharmacist or GP.", source: "letter" },
+    ],
+    latestCheckin: {
+      hoursAgo: 8,
+      transcript: [
+        { speaker: "agent", text: "Good morning Daniela, how are you feeling today?" },
+        { speaker: "patient", text: "Tired but no chest pain, just some bruising on my arm from the IV site." },
+      ],
+      summary: "Reports mild bruising at prior IV site, no chest pain or breathlessness.",
+      mood: "okay",
+      proms: 74,
+      flagsRaised: ["bruising"],
+    },
+    trend: "stable",
+  },
+  {
+    name: "Hassan Malik",
+    phone: "+15550110",
+    dischargeDaysAgo: 4,
+    condition: "Pneumonia",
+    clinician: "np",
+    tcmContactDone: true,
+    tcmContactDaysAgo: 3,
+    f2fOffsetDays: 5,
+    rpmDays: 4,
+    medications: [
+      { name: "Amoxicillin-clavulanate", dose: "875mg", frequency: "Twice daily", status: "new", reason: "7-day course for community-acquired pneumonia" },
+      { name: "Albuterol inhaler", dose: "2 puffs", frequency: "Every 4-6h as needed", status: "unchanged" },
+    ],
+    redFlags: [
+      { severity: "warn", title: "Persistent low-grade fever", explanation: "Your temperature has stayed mildly raised a few days into your antibiotic course. This can be normal early on, but check with your pharmacist or GP if it continues.", source: "call" },
+    ],
+    latestCheckin: {
+      hoursAgo: 12,
+      transcript: [
+        { speaker: "agent", text: "Good morning Hassan, how is your breathing and temperature today?" },
+        { speaker: "patient", text: "Still a bit of a cough and I feel warm, but breathing is easier than yesterday." },
+      ],
+      summary: "Reports persistent cough and low-grade fever, breathing improving.",
+      mood: "okay",
+      proms: 65,
+      flagsRaised: ["cough", "low_grade_fever"],
+    },
+    trend: "stable",
+  },
 ];
 
 const HF_LINES = ["A little tired but otherwise okay.", "Feeling steady today.", "Some mild swelling in my ankles."];
 const COPD_LINES = ["Breathing feels a bit easier today.", "About the same as yesterday.", "A little more short of breath than usual."];
+const AMI_LINES = ["No chest pain, feeling steady.", "A little tired but recovering well.", "Some soreness at the procedure site."];
+const PNEUMONIA_LINES = ["Cough is improving, breathing easier.", "Still a mild cough but no fever.", "Feeling stronger today."];
+
+const CONDITION_LINES: Record<PatientSeed["condition"], string[]> = {
+  HF: HF_LINES,
+  COPD: COPD_LINES,
+  AMI: AMI_LINES,
+  Pneumonia: PNEUMONIA_LINES,
+};
 
 function historicalCheckins(patient: PatientSeed) {
-  const lines = patient.condition === "HF" ? HF_LINES : COPD_LINES;
+  const lines = CONDITION_LINES[patient.condition];
   const checkins: { daysAgo: number; transcript: TranscriptLine[]; summary: string; mood: "okay" | "good" | "tired"; proms: number }[] = [];
   let proms = patient.latestCheckin.proms;
   for (let offset = 1; offset <= 4; offset++) {

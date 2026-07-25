@@ -32,14 +32,14 @@ export function RoiOverview({
           value={estimatedReadmissionsAvoided.toFixed(1)}
           unit="episodes"
           color="bg-primary"
-          note="Illustrative estimate — modeled from HF/COPD baseline 30-day readmission rates x a 21% pooled risk reduction from published post-discharge follow-up evidence, applied to the current panel. Not a measured outcome of this tool."
+          note="Illustrative estimate — modeled from condition-specific baseline 30-day readmission rates (HF/COPD sourced; other HRRP conditions use the general Medicare rate) x a 21% pooled risk reduction from published post-discharge follow-up evidence, applied to the current panel. Not a measured outcome of this tool."
         />
         <StatCard
           label="Est. cost avoided"
           value={`$${Math.round(estimatedCostAvoided).toLocaleString()}`}
           unit="illustrative"
           color="bg-primary"
-          note="HF $2,488 / general $2,140 avoidable-cost-per-avoided-readmission, applied to the modeled estimate above — never the $13-15K gross readmission cost."
+          note="Avoidable-cost-per-avoided-readmission by condition (HF $2,488 / AMI $3,432 / pneumonia $2,278 / general $2,140), applied to the modeled estimate above — never the $13-15K gross readmission cost."
         />
         <StatCard
           label="HRRP penalty exposure"

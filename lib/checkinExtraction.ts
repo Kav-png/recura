@@ -3,6 +3,8 @@ export type TranscriptLine = { speaker: "agent" | "patient"; text: string };
 const PROM_QUESTIONS: Record<string, string> = {
   HF: "How much has shortness of breath limited your daily activities this week — none, a little, moderate, quite a bit, or extremely limited?",
   COPD: "How breathless have you been doing everyday activities — none, a little, moderate, quite a bit, or extremely breathless?",
+  AMI: "How much has chest discomfort or fatigue limited your daily activities this week — none, a little, moderate, quite a bit, or extremely limited?",
+  Pneumonia: "How breathless or fatigued have you been doing everyday activities since your pneumonia — none, a little, moderate, quite a bit, or extremely?",
 };
 
 export function promQuestionFor(condition: string) {

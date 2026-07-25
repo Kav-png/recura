@@ -13,7 +13,7 @@ export default function SettingsPage() {
         <div className="bg-surface rounded-2xl border border-border p-5 sm:p-6 mb-5">
           <div className="font-heading font-bold text-[15px] mb-1.5">Demo data</div>
           <div className="text-[13px] text-muted mb-4 leading-relaxed">
-            Resets the demo practice to a clean state: 8 HF/COPD patients, medications, red flags, a full check-in
+            Resets the demo practice to a clean state: 10 patients across HF, COPD, AMI, and pneumonia, medications, red flags, a full check-in
             history with call transcripts, alerts (some already reviewed, some not), and TCM/RPM billing status.
             Use this before a run-through if alerts have been marked reviewed during rehearsal.
           </div>
