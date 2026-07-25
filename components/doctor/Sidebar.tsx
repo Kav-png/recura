@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building2, Settings } from "lucide-react";
+import { DashboardIcon, InstitutionIcon, SettingsGearIcon } from "@/components/doctor/SidebarIcons";
 import { Logo } from "@/components/Logo";
 
 const navItems = [
-  { label: "Doctor dashboard", href: "/doctor", icon: LayoutDashboard, match: "/doctor" },
-  { label: "Practice overview", href: "/practice", icon: Building2, match: "/practice" },
-  { label: "Settings", href: "/settings", icon: Settings, match: "/settings" },
+  { label: "Doctor dashboard", href: "/doctor", icon: DashboardIcon, match: "/doctor" },
+  { label: "Practice overview", href: "/practice", icon: InstitutionIcon, match: "/practice" },
+  { label: "Settings", href: "/settings", icon: SettingsGearIcon, match: "/settings" },
 ];
 
 export function Sidebar() {
