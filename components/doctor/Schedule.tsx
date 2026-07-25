@@ -6,7 +6,7 @@ export function Schedule({
   items: { patientId: string; patientName: string; nextCheckin: Date | null }[];
 }) {
   return (
-    <div className="bg-surface rounded-2xl border border-border p-4 sm:p-5">
+    <div className="glass rounded-2xl p-4 sm:p-5">
       <div className="font-heading font-bold text-[15px] mb-3.5">Upcoming Check-in Calls</div>
       <div className="flex flex-col gap-3.5">
         {items.map((s) => (

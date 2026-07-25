@@ -3,12 +3,14 @@
 :root {
   --background: oklch(97.5% 0.012 70);
   --foreground: oklch(22% 0.02 50);
-  --surface: oklch(99% 0.006 70);
-  --border: oklch(91% 0.01 60);
+  --surface: oklch(99% 0.006 70 / 0.6);
+  --surface-strong: oklch(99% 0.006 70 / 0.82);
+  --border: oklch(88% 0.015 60 / 0.7);
+  --glass-highlight: oklch(100% 0 0 / 0.55);
   --muted: oklch(52% 0.02 60);
-  --muted-bg: oklch(95% 0.012 65);
+  --muted-bg: oklch(95% 0.012 65 / 0.55);
   --primary: oklch(64% 0.15 35);
-  --sidebar: oklch(16% 0.005 260);
+  --sidebar: oklch(20% 0.02 45 / 0.72);
   --critical: oklch(58% 0.18 25);
   --critical-bg: oklch(93% 0.05 25);
   --warning: oklch(70% 0.14 75);
@@ -21,6 +23,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
   --color-border: var(--border);
   --color-muted: var(--muted);
   --color-muted-bg: var(--muted-bg);
@@ -38,12 +41,60 @@
 
 body {
   background:
-    radial-gradient(ellipse 1200px 600px at 15% -10%, oklch(85% 0.05 45 / 0.5), transparent 60%),
-    radial-gradient(ellipse 1000px 700px at 100% 0%, oklch(88% 0.04 150 / 0.35), transparent 55%),
+    radial-gradient(ellipse 1100px 650px at 12% -8%, oklch(78% 0.09 40 / 0.55), transparent 60%),
+    radial-gradient(ellipse 900px 750px at 102% 0%, oklch(82% 0.08 150 / 0.4), transparent 55%),
+    radial-gradient(ellipse 800px 600px at 30% 100%, oklch(80% 0.07 90 / 0.3), transparent 60%),
+    radial-gradient(ellipse 700px 700px at 90% 60%, oklch(78% 0.09 25 / 0.22), transparent 55%),
     var(--background);
   background-attachment: fixed;
   color: var(--foreground);
 }
 
+/* Glassmorphism: translucent surface + blur so the warm gradient blobs behind
+   panels stay visible. Border/shadow give the panel a lit "edge" instead of
+   a hard outline, which is what reads as glass rather than plain flat cards. */
+@utility glass {
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  box-shadow:
+    0 1px 1px oklch(30% 0.02 60 / 0.04),
+    0 16px 40px -16px oklch(30% 0.08 40 / 0.22),
+    inset 0 1px 0 var(--glass-highlight);
+}
+
+@utility glass-strong {
+  background: var(--surface-strong);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--border);
+  box-shadow:
+    0 1px 1px oklch(30% 0.02 60 / 0.04),
+    0 20px 48px -18px oklch(30% 0.08 40 / 0.28),
+    inset 0 1px 0 var(--glass-highlight);
+}
+
+@utility glass-dark {
+  background: var(--sidebar);
+  backdrop-filter: blur(24px);
+  border: 1px solid oklch(100% 0 0 / 0.08);
+  box-shadow:
+    0 20px 48px -16px oklch(20% 0.05 40 / 0.45),
+    inset 0 1px 0 oklch(100% 0 0 / 0.07);
+}
+
+@utility glass-sm {
+  background: var(--muted-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+}
+
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: oklch(85% 0.02 60); border-radius: 8px; }
+
+@media print {
+  .glass, .glass-strong {
+    background: var(--surface-strong);
+    backdrop-filter: none;
+    box-shadow: none;
+  }
+}

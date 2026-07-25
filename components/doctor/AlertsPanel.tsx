@@ -29,7 +29,7 @@ export function AlertsPanel({ alerts }: { alerts: Alert[] }) {
   const criticalCount = alerts.filter((a) => a.severity === "danger" && !a.reviewed_at).length;
 
   return (
-    <div className="bg-surface rounded-2xl border border-border p-4 sm:p-5">
+    <div className="glass rounded-2xl p-4 sm:p-5">
       <div className="flex items-center justify-between mb-3.5">
         <div className="font-heading font-bold text-[15px]">Alerts</div>
         {criticalCount > 0 && (
@@ -95,7 +95,7 @@ export function AlertsPanel({ alerts }: { alerts: Alert[] }) {
                       e.stopPropagation();
                       startTransition(() => reviewAlert(a.id, "call_patient"));
                     }}
-                    className="text-[11.5px] font-semibold px-2.5 py-1 rounded-md bg-surface border border-border disabled:opacity-50"
+                    className="text-[11.5px] font-semibold px-2.5 py-1 rounded-md glass-sm disabled:opacity-50"
                   >
                     Call patient
                   </button>

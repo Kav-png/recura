@@ -63,7 +63,7 @@ export function PatientAlertBar({ alert }: { alert: Alert | undefined }) {
         <button
           disabled={isPending}
           onClick={() => startTransition(() => reviewAlert(alert.id, "call_patient"))}
-          className="text-[11.5px] font-semibold px-2.5 py-1 rounded-md bg-surface border border-border disabled:opacity-50"
+          className="text-[11.5px] font-semibold px-2.5 py-1 rounded-md glass-sm disabled:opacity-50"
         >
           Call patient
         </button>

@@ -55,7 +55,7 @@ export function SearchBox({ patients }: { patients: SearchPatient[] }) {
 
   return (
     <div ref={containerRef} className="relative hidden md:block w-[220px] lg:w-[280px]">
-      <div className="flex items-center gap-2.5 bg-muted-bg rounded-xl px-4 py-2.5">
+      <div className="flex items-center gap-2.5 glass-sm rounded-xl px-4 py-2.5">
         <Search size={16} className="text-muted shrink-0" />
         <input
           ref={inputRef}
@@ -72,7 +72,7 @@ export function SearchBox({ patients }: { patients: SearchPatient[] }) {
         />
       </div>
       {open && query.trim() && (
-        <div className="absolute top-full mt-2 left-0 right-0 bg-surface border border-border rounded-xl shadow-lg shadow-black/10 overflow-hidden z-50">
+        <div className="absolute top-full mt-2 left-0 right-0 glass rounded-xl overflow-hidden z-50">
           {results.length === 0 ? (
             <div className="px-4 py-3 text-sm text-muted">No patients found</div>
           ) : (
