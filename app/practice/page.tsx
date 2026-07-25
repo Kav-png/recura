@@ -4,6 +4,7 @@ import { RoiOverview } from "@/components/practice/RoiOverview";
 import { ClinicianBreakdown } from "@/components/practice/ClinicianBreakdown";
 import { EnrollmentFunnel } from "@/components/practice/EnrollmentFunnel";
 import { BillingByCode } from "@/components/practice/BillingByCode";
+import { WhyUncaptured } from "@/components/practice/WhyUncaptured";
 import { getDemoClinician, getPracticeOverview } from "@/lib/queries";
 import { computeRoiMetrics, computeClinicianBreakdown, computeBillingByCode, computeFunnel } from "@/lib/practiceMetrics";
 
@@ -44,6 +45,8 @@ export default async function PracticePage() {
             />
             <BillingByCode rows={billingByCode} />
           </div>
+
+          <WhyUncaptured />
 
           <ClinicianBreakdown rows={clinicianRows} />
         </div>

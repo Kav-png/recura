@@ -1,5 +1,6 @@
 import { severityMeta, daysSince, timeAgo, type Severity } from "@/lib/status";
 import { CheckinCallButton } from "@/components/doctor/CheckinCallButton";
+import { ComplianceActions } from "@/components/doctor/ComplianceActions";
 
 type Patient = {
   id: string;
@@ -46,6 +47,7 @@ const CODE_LABELS: Record<string, string> = {
   "99495": "TCM — moderate complexity (2-day contact)",
   "99496": "TCM — high complexity (2-day contact)",
   "99445": "RPM device supply (2–15 days data)",
+  "99454": "RPM device supply (16+ days data)",
   "99470": "RPM management, first 10 min",
 };
 
@@ -275,7 +277,24 @@ export function PatientDetail({
 
       {/* Billing status */}
       <div className="bg-surface rounded-2xl border border-border p-4 sm:p-5">
-        <div className="font-heading font-bold text-[15px] mb-3">Episode Billing Status</div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="font-heading font-bold text-[15px]">Episode Billing Status</div>
+          {billing.length > 0 && (
+            <a
+              href={`/doctor/${patient.id}/billing`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[12px] font-semibold text-primary hover:underline"
+            >
+              View billing document →
+            </a>
+          )}
+        </div>
+        {billing.length === 0 && (
+          <div className="text-[12.5px] text-muted mb-2">
+            No billing events yet — log a live TCM or RPM contact below to generate them automatically.
+          </div>
+        )}
         <div className="flex flex-col">
           {billing.map((b) => (
             <div key={b.id} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 py-2.5 border-b border-border/60 last:border-0">
@@ -315,6 +334,11 @@ export function PatientDetail({
             by={patient.rpm_clinician?.name ?? null}
             method={patient.rpm_live_contact_method}
             at={patient.rpm_live_contact_at}
+          />
+          <ComplianceActions
+            patientId={patient.id}
+            tcmDone={patient.tcm_contact_done}
+            rpmLiveDone={!!patient.rpm_live_contact_at}
           />
           <div className="flex items-center justify-between p-3 rounded-xl bg-muted-bg">
             <div className="text-[13px] font-semibold">Consent captured at enrollment</div>

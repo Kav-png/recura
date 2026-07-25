@@ -81,7 +81,7 @@ export function computeClinicianBreakdown(clinicians: Clinician[], patients: Pat
 }
 
 export function computeBillingByCode(billing: BillingEvent[]) {
-  const codes = ["99495", "99445", "99470"];
+  const codes = ["99495", "99496", "99445", "99454", "99470"];
   return codes.map((code) => {
     const rows = billing.filter((b) => b.code === code);
     const captured = rows.filter((b) => b.status === "captured");

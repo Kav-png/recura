@@ -68,7 +68,7 @@ export async function getPatientDetail(patientId: string) {
         "*, clinicians!patients_clinician_id_fkey(name, role), tcm_clinician:clinicians!patients_tcm_contact_by_fkey(name), rpm_clinician:clinicians!patients_rpm_live_contact_by_fkey(name)"
       )
       .eq("id", patientId)
-      .single(),
+      .maybeSingle(),
     supabase.from("medications").select("*").eq("patient_id", patientId).order("name"),
     supabase.from("red_flags").select("*").eq("patient_id", patientId).order("severity", { ascending: false }),
     supabase.from("checkins").select("*").eq("patient_id", patientId).order("called_at", { ascending: true }),
@@ -143,6 +143,21 @@ export async function getPatientsForPortal(practiceId: string) {
     .order("name");
   if (error) throw error;
   return data;
+}
+
+export async function getBillingDocument(patientId: string) {
+  const supabase = supabaseServer();
+  const [{ data: patient, error: pErr }, { data: billing, error: bErr }] = await Promise.all([
+    supabase
+      .from("patients")
+      .select("name, condition, discharge_date, practices(name), clinicians!patients_clinician_id_fkey(name, role)")
+      .eq("id", patientId)
+      .maybeSingle(),
+    supabase.from("billing_events").select("code, amount, status").eq("patient_id", patientId).order("code"),
+  ]);
+  if (pErr) throw pErr;
+  if (bErr) throw bErr;
+  return { patient, billing: billing ?? [] };
 }
 
 export async function getPracticeOverview(practiceId: string) {

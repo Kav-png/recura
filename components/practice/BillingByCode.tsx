@@ -1,6 +1,8 @@
 const CODE_LABELS: Record<string, string> = {
   "99495": "TCM — moderate complexity (2-day contact)",
+  "99496": "TCM — high complexity (2-day contact)",
   "99445": "RPM device supply (2–15 days data)",
+  "99454": "RPM device supply (16+ days data)",
   "99470": "RPM management, first 10 min",
 };
 
