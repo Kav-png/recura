@@ -1,4 +1,5 @@
-import { Search, Bell } from "lucide-react";
+import { Bell } from "lucide-react";
+import { SearchBox } from "@/components/doctor/SearchBox";
 
 function initials(name: string) {
   return name
@@ -16,11 +17,13 @@ export function Topbar({
   role,
   specialty,
   unreadAlertCount,
+  patients,
 }: {
   clinicianName: string;
   role: string;
   specialty: string | null;
   unreadAlertCount: number;
+  patients: { id: string; name: string; condition: string; status: string }[];
 }) {
   const today = new Intl.DateTimeFormat("en-GB", { weekday: "long", month: "long", day: "numeric" }).format(new Date());
 
@@ -35,10 +38,7 @@ export function Topbar({
         </div>
       </div>
       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-        <div className="hidden md:flex items-center gap-2.5 bg-muted-bg rounded-xl px-4 py-2.5 w-[220px] lg:w-[280px]">
-          <Search size={16} className="text-muted shrink-0" />
-          <span className="text-muted text-sm truncate">Search patients, transcripts...</span>
-        </div>
+        <SearchBox patients={patients} />
         <div className="relative w-10 h-10 lg:w-11 lg:h-11 rounded-xl bg-muted-bg flex items-center justify-center shrink-0">
           <Bell size={18} className="text-foreground/70" />
           {unreadAlertCount > 0 && (
