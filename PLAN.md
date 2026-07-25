@@ -7,11 +7,11 @@
 
 **Problem:** 1 in 4 heart failure patients and 1 in 5 COPD patients are back in hospital within 30 days — and the deterioration that puts them there builds silently over days while nobody is watching.
 
-**Solution:** a detection engine for the 30 days after discharge — daily AI voice check-ins plus wearable baselines catch the early signature of decompensation (rising resting HR, falling HRV, creeping symptoms) and flag it to a clinician with evidence, days before it becomes an ambulance.
+**Solution:** a detection engine for the 30 days after discharge — daily AI voice check-ins plus wearable baselines catch the early signature of decompensation (rising resting HR, falling HRV, creeping symptoms — see `research/05-evidence-base.md`'s HeartLogic/MultiSENSE entry for the sourced clinical basis) and flag it to a clinician with evidence, days before it becomes an ambulance.
 
-**Market:** 2M+ annual US HF/COPD discharges where hospitals eat the readmission cost and physician groups leave ~$300 of Medicare reimbursement uncaptured per patient.
+**Market:** ~2M annual US HF/COPD discharges where hospitals eat the readmission cost and physician groups leave ~$300 of Medicare reimbursement uncaptured per patient.
 
-**Why now:** Jan 2026 CMS codes made short post-discharge monitoring billable for the first time, Apple Watch just got FDA-cleared cardiovascular detection, and voice AI finally sounds human at pennies per call.
+**Why now:** Jan 2026 CMS codes made short post-discharge monitoring billable for the first time, Apple Watch just got FDA-cleared for hypertension detection, and voice AI finally sounds human at pennies per call.
 
 **Moat:** every clinician confirm/dismiss on every flag becomes a training label tied to a real 30-day outcome — a condition-specific detection dataset that only exists inside deployed clinical workflow.
 

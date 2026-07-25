@@ -5,7 +5,7 @@ import { submitSelfCheckin } from "@/app/patient/actions";
 import { SELF_CHECKIN_MOODS } from "./copy";
 import { Card } from "./Card";
 
-export function SelfCheckinForm({ patientId }: { patientId: string }) {
+export function SelfCheckinForm({ patientId, emergencyNumber }: { patientId: string; emergencyNumber: string }) {
   const [mood, setMood] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -65,7 +65,7 @@ export function SelfCheckinForm({ patientId }: { patientId: string }) {
         {isPending ? "Sending…" : "Share how I'm feeling"}
       </button>
       <p className="text-[12px] text-muted mt-2.5 leading-relaxed">
-        If you feel seriously unwell right now, please call 999 or your GP straightaway rather than using this form.
+        {`If you feel seriously unwell right now, please call ${emergencyNumber} or your GP straightaway rather than using this form.`}
       </p>
     </Card>
   );

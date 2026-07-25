@@ -25,7 +25,6 @@ export default async function DoctorLayout({ children }: { children: React.React
       <div className="flex flex-col min-w-0 pt-24 lg:pt-0 lg:pl-[124px]">
         <Topbar
           clinicianName={clinician.name}
-          role={clinician.role}
           specialty={clinician.specialty}
           unreadAlertCount={unreadAlertCount}
           patients={patients}

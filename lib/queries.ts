@@ -7,7 +7,7 @@ export async function getDemoClinician() {
   const supabase = supabaseServer();
   const { data, error } = await supabase
     .from("clinicians")
-    .select("*, practices(id, name)")
+    .select("*, practices(id, name, country)")
     .eq("name", DEMO_CLINICIAN_NAME)
     .single();
   if (error) throw error;
@@ -79,7 +79,7 @@ export async function getPatientDetail(patientId: string) {
     supabase
       .from("patients")
       .select(
-        "*, clinicians!patients_clinician_id_fkey(name, role), tcm_clinician:clinicians!patients_tcm_contact_by_fkey(name), rpm_clinician:clinicians!patients_rpm_live_contact_by_fkey(name)"
+        "*, clinicians!patients_clinician_id_fkey(name, role), tcm_clinician:clinicians!patients_tcm_contact_by_fkey(name), rpm_clinician:clinicians!patients_rpm_live_contact_by_fkey(name), practices(country)"
       )
       .eq("id", patientId)
       .maybeSingle(),

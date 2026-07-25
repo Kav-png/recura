@@ -8,8 +8,10 @@ import { getDemoClinician } from "@/lib/queries";
 import { SESSION_COOKIE, isValidAccessCode, sessionTokenForCode } from "@/lib/auth";
 import { extractCheckin, pickPrimaryMedication, promQuestionFor, type TranscriptLine } from "@/lib/checkinExtraction";
 import { computeExpectedBilling } from "@/lib/billing";
+import { emergencyNumberFor, isCountryCode } from "@/lib/emergency";
 
 export type LiveContactMethod = "phone_live" | "video_live" | "in_person";
+export type TcmMdmLevel = "moderate" | "high";
 
 /**
  * Real billing automation: recomputes billing_events for a patient purely from the compliance
@@ -22,7 +24,7 @@ export async function reconcileBillingForPatient(patientId: string) {
   const { data: patient, error } = await supabase
     .from("patients")
     .select(
-      "discharge_date, tcm_contact_done, tcm_contact_by, tcm_contact_method, tcm_contact_date, f2f_scheduled_date, rpm_days_this_period, rpm_live_contact_at, rpm_live_contact_by, rpm_live_contact_method"
+      "discharge_date, tcm_contact_done, tcm_contact_by, tcm_contact_method, tcm_contact_date, tcm_med_reconciliation_at, tcm_mdm_level, f2f_scheduled_date, rpm_days_this_period, rpm_live_contact_at, rpm_live_contact_by, rpm_live_contact_method, rpm_live_contact_minutes"
     )
     .eq("id", patientId)
     .maybeSingle();
@@ -64,8 +66,39 @@ export async function recordTcmContact(patientId: string, method: LiveContactMet
   await reconcileBillingForPatient(patientId);
 }
 
+/**
+ * Logs medication reconciliation — a required element of the TCM service itself (CMS TCM
+ * requirements, research/03), not just a nice-to-have note. The live 2-day contact alone can't
+ * bill until this is on file too.
+ */
+export async function recordTcmMedReconciliation(patientId: string) {
+  const supabase = supabaseServer();
+
+  const { error } = await supabase
+    .from("patients")
+    .update({ tcm_med_reconciliation_at: new Date().toISOString() })
+    .eq("id", patientId);
+  if (error) throw error;
+
+  await reconcileBillingForPatient(patientId);
+}
+
+/**
+ * Records the clinician-documented medical-decision-making complexity that CMS actually keys
+ * 99495 vs 99496 off of (research/03) — distinct from the F2F-day proxy used when no level has
+ * been logged yet.
+ */
+export async function recordTcmMdmLevel(patientId: string, level: TcmMdmLevel) {
+  const supabase = supabaseServer();
+
+  const { error } = await supabase.from("patients").update({ tcm_mdm_level: level }).eq("id", patientId);
+  if (error) throw error;
+
+  await reconcileBillingForPatient(patientId);
+}
+
 /** Logs the RPM/RTM monthly live interactive communication touch — same live-contact requirement as TCM. */
-export async function recordRpmLiveContact(patientId: string, method: LiveContactMethod) {
+export async function recordRpmLiveContact(patientId: string, method: LiveContactMethod, minutes: number) {
   const supabase = supabaseServer();
   const clinician = await getDemoClinician();
 
@@ -75,6 +108,7 @@ export async function recordRpmLiveContact(patientId: string, method: LiveContac
       rpm_live_contact_at: new Date().toISOString(),
       rpm_live_contact_by: clinician.id,
       rpm_live_contact_method: method,
+      rpm_live_contact_minutes: minutes,
     })
     .eq("id", patientId);
   if (error) throw error;
@@ -169,6 +203,28 @@ export async function unreviewAlert(alertId: string) {
   revalidatePath("/doctor", "layout");
 }
 
+/**
+ * Country choice drives the emergency number quoted everywhere in real time (alert messages,
+ * patient portal copy) — see lib/emergency.ts. Seeded/historical transcript text is not rewritten.
+ */
+export async function setPracticeCountry(country: string) {
+  if (!isCountryCode(country)) throw new Error(`Unsupported country code: ${country}`);
+
+  const supabase = supabaseServer();
+  const clinician = await getDemoClinician();
+
+  const { error } = await supabase
+    .from("practices")
+    .update({ country })
+    .eq("id", clinician.practice_id);
+
+  if (error) throw error;
+
+  revalidatePath("/doctor", "layout");
+  revalidatePath("/patient", "layout");
+  revalidatePath("/settings");
+}
+
 export type NewPatientInput = {
   name: string;
   phone: string;
@@ -212,7 +268,7 @@ export async function startCheckin(patientId: string) {
 
   const supabase = supabaseServer();
   const [{ data: patient, error: pErr }, { data: medications, error: mErr }] = await Promise.all([
-    supabase.from("patients").select("name, condition").eq("id", patientId).maybeSingle(),
+    supabase.from("patients").select("name, condition, practices(country)").eq("id", patientId).maybeSingle(),
     supabase.from("medications").select("name, status").eq("patient_id", patientId),
   ]);
   if (pErr) throw pErr;
@@ -228,6 +284,10 @@ export async function startCheckin(patientId: string) {
       condition: patient.condition,
       medication_name: medicationName,
       prom_question: promQuestionFor(patient.condition),
+      // Only takes effect once the agent's own system prompt (configured in the ElevenLabs
+      // dashboard) references {{emergency_number}} instead of a hardcoded number — see
+      // lib/emergency.ts for the country → number mapping driven by the Settings page.
+      emergency_number: emergencyNumberFor(patient.practices?.country),
     },
   };
 }
@@ -235,7 +295,11 @@ export async function startCheckin(patientId: string) {
 export async function saveCheckin(patientId: string, transcript: TranscriptLine[]) {
   const supabase = supabaseServer();
   const [{ data: patient, error: pErr }, { data: medications, error: mErr }] = await Promise.all([
-    supabase.from("patients").select("condition, clinician_id").eq("id", patientId).maybeSingle(),
+    supabase
+      .from("patients")
+      .select("condition, clinician_id, practices(country)")
+      .eq("id", patientId)
+      .maybeSingle(),
     supabase.from("medications").select("name, status").eq("patient_id", patientId),
   ]);
   if (pErr) throw pErr;
@@ -243,7 +307,8 @@ export async function saveCheckin(patientId: string, transcript: TranscriptLine[
   if (!patient) throw new Error("This patient no longer exists — the page may be out of date, try reloading.");
 
   const medicationName = pickPrimaryMedication(medications ?? []);
-  const result = extractCheckin({ condition: patient.condition, medicationName, transcript });
+  const emergencyNumber = emergencyNumberFor(patient.practices?.country);
+  const result = extractCheckin({ condition: patient.condition, medicationName, transcript, emergencyNumber });
 
   const { data: checkin, error: cErr } = await supabase
     .from("checkins")

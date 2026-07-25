@@ -1,17 +1,14 @@
 import { Bell } from "lucide-react";
 import { SearchBox } from "@/components/doctor/SearchBox";
 import { AddPatientButton } from "@/components/doctor/AddPatientButton";
-import { initials } from "@/lib/status";
 
 export function Topbar({
   clinicianName,
-  role,
   specialty,
   unreadAlertCount,
   patients,
 }: {
   clinicianName: string;
-  role: string;
   specialty: string | null;
   unreadAlertCount: number;
   patients: { id: string; name: string; condition: string; status: string }[];
@@ -36,15 +33,6 @@ export function Topbar({
           {unreadAlertCount > 0 && (
             <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-critical border-2 border-surface" />
           )}
-        </div>
-        <div className="hidden sm:flex items-center gap-2.5 pl-3 border-l border-border">
-          <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-primary/60 flex items-center justify-center font-heading font-bold text-foreground/80 text-sm shrink-0">
-            {initials(clinicianName)}
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm font-semibold truncate">{clinicianName}</div>
-            <div className="text-xs text-muted capitalize">{role}</div>
-          </div>
         </div>
       </div>
     </div>

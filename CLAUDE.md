@@ -4,7 +4,7 @@
 
 ## What we're building
 A health hackathon project (Juno Consumer Health Hackathon, judged by YC founders, submission Sun 12:00 sharp — freeze 10:30, submit by 11:50) — pivoted mid-hackathon from a consumer product to an **institutional one, sold to physician groups/hospitals** (see MASTER-PLAN.md and strategy/us-readmissions-thesis.md for why).
-The product: a discharge letter is parsed (Claude vision) into structured meds/changes/red-flags → an ElevenLabs voice agent rings the patient every morning for a 90-second check-in → any red-flag answer escalates to the assigned clinician's dashboard for review (severe symptoms still get an immediate "call 999 now" to the patient — that's unconditional, see rail #2) → three product surfaces: a **doctor/nurse dashboard** (patient panel, check-ins, transcripts, alerts, billing status), a **practice ROI dashboard** (money saved/captured), and a **patient portal** (plain-English plan, daily check-in).
+The product: a discharge letter is parsed (Claude vision) into structured meds/changes/red-flags → an ElevenLabs voice agent rings the patient every morning for a 90-second check-in → any red-flag answer escalates to the assigned clinician's dashboard for review (severe symptoms still get an immediate "call [emergency number] now" to the patient — that's unconditional, see rail #2; the number itself is derived from the practice's configured country via `lib/emergency.ts`, set on the Settings page, not hardcoded to one country) → three product surfaces: a **doctor/nurse dashboard** (patient panel, check-ins, transcripts, alerts, billing status), a **practice ROI dashboard** (money saved/captured), and a **patient portal** (plain-English plan, daily check-in).
 
 The demo spine (updated): printed letter → live photo parse → red flag shown → phone rings on stage → red-flag answer → clinician's dashboard flags it live → clinician marks "bring them in" → practice dashboard's captured-billing number ticks up.
 
@@ -20,7 +20,7 @@ See MASTER-PLAN.md's Data model section for the current schema (practices, clini
 
 ## Safety rails (hard requirements, never relax)
 1. The system NEVER diagnoses, prescribes, or reassures about symptoms. It notices, explains in plain language, and escalates to humans.
-2. On severe symptoms (chest pain, stroke signs FAST, heavy bleeding, breathing difficulty): the voice agent's ONLY response is "please call 999 now" + fire an urgent alert to the clinician dashboard. No follow-up questions first. This rail is unconditional regardless of which product surface receives the alert.
+2. On severe symptoms (chest pain, stroke signs FAST, heavy bleeding, breathing difficulty): the voice agent's ONLY response is "please call [emergency number] now" + fire an urgent alert to the clinician dashboard. The number is looked up from the practice's configured country (`lib/emergency.ts`, set via Settings → Practice region) — never hardcode a specific country's number in new copy. No follow-up questions first. This rail is unconditional regardless of which product surface receives the alert.
 3. Every plain-English medical explanation ends with "check with your pharmacist or GP".
 4. No real patient data anywhere. Demo data only (patient "Margaret Wilson" and clinician "Dr. Maria Alvarez", fictional).
 

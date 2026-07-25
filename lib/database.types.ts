@@ -277,10 +277,13 @@ export type Database = {
           rpm_live_contact_at: string | null
           rpm_live_contact_by: string | null
           rpm_live_contact_method: string | null
+          rpm_live_contact_minutes: number | null
           tcm_contact_by: string | null
           tcm_contact_date: string | null
           tcm_contact_done: boolean
           tcm_contact_method: string | null
+          tcm_med_reconciliation_at: string | null
+          tcm_mdm_level: string | null
         }
         Insert: {
           clinician_id?: string | null
@@ -299,10 +302,13 @@ export type Database = {
           rpm_live_contact_at?: string | null
           rpm_live_contact_by?: string | null
           rpm_live_contact_method?: string | null
+          rpm_live_contact_minutes?: number | null
           tcm_contact_by?: string | null
           tcm_contact_date?: string | null
           tcm_contact_done?: boolean
           tcm_contact_method?: string | null
+          tcm_med_reconciliation_at?: string | null
+          tcm_mdm_level?: string | null
         }
         Update: {
           clinician_id?: string | null
@@ -321,10 +327,13 @@ export type Database = {
           rpm_live_contact_at?: string | null
           rpm_live_contact_by?: string | null
           rpm_live_contact_method?: string | null
+          rpm_live_contact_minutes?: number | null
           tcm_contact_by?: string | null
           tcm_contact_date?: string | null
           tcm_contact_done?: boolean
           tcm_contact_method?: string | null
+          tcm_med_reconciliation_at?: string | null
+          tcm_mdm_level?: string | null
         }
         Relationships: [
           {
@@ -359,18 +368,21 @@ export type Database = {
       }
       practices: {
         Row: {
+          country: string
           created_at: string
           id: string
           is_demo: boolean
           name: string
         }
         Insert: {
+          country?: string
           created_at?: string
           id?: string
           is_demo?: boolean
           name: string
         }
         Update: {
+          country?: string
           created_at?: string
           id?: string
           is_demo?: boolean

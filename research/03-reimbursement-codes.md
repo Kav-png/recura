@@ -37,5 +37,22 @@
 ## Diagnosis codes for superbill generation
 Standard CMS ICD-10-CM tabular list codes (not a statistic — the official code set itself), used as the "unspecified" default per condition on generated billing documents pending real clinical coding by practice staff: HF → I50.9 (heart failure, unspecified); COPD → J44.9 (COPD, unspecified); AMI → I21.9 (acute MI, unspecified); Pneumonia → J18.9 (pneumonia, unspecified organism). Source: CMS ICD-10-CM Official Tabular List (annual release). [A] These are placeholders on the generated document, not a coding recommendation — real diagnosis coding is the billing clinician's responsibility.
 
+## Documentation & audit-trail requirements (what CMS/MAC auditors actually check)
+Not a rate/statistic — these are the medical-record elements CMS's TCM/RPM/RTM billing guidance and the CPT manual require on file to substantiate a claim under audit, distinct from and in addition to the AI-eligibility rules above. [B — general CMS TCM/RPM billing-guidance knowledge; no single primary citation, cross-check with reimbursement counsel per the ACTION ITEM below before customer-facing use]
+- **TCM (99495/99496)**:
+  1. Discharge date + source (inpatient/SNF/observation).
+  2. The interactive contact: date, method (must be live), and clinician name/credential. If the first attempt fails, ≥2 documented attempts are expected before the 2-business-day window closes.
+  3. **Medication reconciliation** — its own documented element, completed by the date of the F2F visit; the live contact alone does not make the service billable without it.
+  4. The F2F visit: date, and an E/M note whose **medical-decision-making (MDM) level** (moderate vs. high) is what CMS actually keys 99495 vs 99496 off — not the F2F day-count alone (the day count is a timing requirement, not the complexity determinant).
+  5. Care-plan elements: discharge-summary review, coordination with other treating providers, patient/caregiver education, scheduling of follow-ups, community-resource assessment.
+  6. Single-biller rule: only one practitioner bills TCM per patient per period.
+- **RPM/RTM (99445/99454/99457/99470)**:
+  1. Patient consent to remote monitoring (on file, renewed yearly).
+  2. Device order tied to the diagnosis.
+  3. Device-day transmission log (drives 99445 vs 99454 code selection).
+  4. The live interactive touch: date, method, clinical staff name, **and a duration log** — this is what distinguishes 99457 (≥20 min) from 99470 (10–19 min); CMS/CPT do not treat these as interchangeable defaults.
+- **General posture**: auditors want contemporaneous, timestamped chart entries naming the specific clinician who performed each required element — a system-generated "captured" flag with no underlying note is not, by itself, audit-defensible.
+- Product implementation: `lib/billing.ts#computeExpectedBilling` gates TCM "captured" status on medication reconciliation being logged (not just the live contact), selects 99495/99496 from a clinician-documented MDM level (`tcm_mdm_level`, falling back to the F2F-day heuristic only when no level has been recorded), and selects 99457 vs. 99470 from a logged RPM contact duration (`rpm_live_contact_minutes`) rather than always defaulting to the 10-minute code.
+
 ## Why capture stays low even though the codes exist (the automation gap)
 The codes and rates above have existed for years, yet TCM capture sits at 17.9% (see under-capture table above) because the work is a live-clinician-time bottleneck, not a data problem: someone has to make and document (a) a synchronous 2-day contact per discharge, within a hard deadline, and (b) a synchronous monthly RPM/RTM touch, per the AI-eligibility rules above — and today that documentation is usually manual (EHR free text or a spreadsheet), so it's easy to let the deadline lapse or forget to file the claim. The product's automation opportunity is therefore narrow and specific: AI can (1) do all the non-billable volume work (daily check-ins, symptom capture, device-day ingestion, scheduling the F2F, drafting the note), and (2) turn the clinician's live touch into a one-click logged event that deterministically computes the correct CPT code/status and renders a submittable billing document — but it cannot perform or fabricate the live contact itself. That's the design implemented in `lib/billing.ts` / `lib/billingDocument.ts`.

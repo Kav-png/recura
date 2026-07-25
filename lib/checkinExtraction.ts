@@ -83,8 +83,9 @@ export function extractCheckin(input: {
   condition: string;
   medicationName: string;
   transcript: TranscriptLine[];
+  emergencyNumber: string;
 }): CheckinExtraction {
-  const { medicationName, transcript } = input;
+  const { medicationName, transcript, emergencyNumber } = input;
   const allPatientText = patientLines(transcript).join(" ");
 
   const severeFlags = SEVERE_KEYWORDS.filter((k) => k.pattern.test(allPatientText));
@@ -111,7 +112,7 @@ export function extractCheckin(input: {
   if (isDanger) {
     severity = "danger";
     const labels = severeFlags.map((f) => f.label).join(" and ");
-    alertMessage = `${labels[0].toUpperCase()}${labels.slice(1)} reported — 999 advised, immediate review required.`;
+    alertMessage = `${labels[0].toUpperCase()}${labels.slice(1)} reported — ${emergencyNumber} advised, immediate review required.`;
   } else if (missedMedication && isAnticoagulant) {
     severity = "warn";
     alertMessage = `Missed ${medicationName} this morning.`;

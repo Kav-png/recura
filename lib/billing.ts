@@ -8,6 +8,7 @@ export const CPT_RATES: Record<string, { amount: number; label: string }> = {
   "99445": { amount: 50, label: "RPM device supply (2–15 days data / 30d)" },
   "99454": { amount: 50, label: "RPM device supply (16+ days data / 30d)" },
   "99470": { amount: 26, label: "RPM management, first 10 min live contact" },
+  "99457": { amount: 52, label: "RPM management, first 20 min live contact" },
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -28,11 +29,14 @@ export type BillingPatientInput = {
   tcm_contact_by: string | null;
   tcm_contact_method: string | null;
   tcm_contact_date: string | null;
+  tcm_med_reconciliation_at: string | null;
+  tcm_mdm_level: string | null;
   f2f_scheduled_date: string | null;
   rpm_days_this_period: number;
   rpm_live_contact_at: string | null;
   rpm_live_contact_by: string | null;
   rpm_live_contact_method: string | null;
+  rpm_live_contact_minutes: number | null;
 };
 
 export type ComputedBillingEvent = {
@@ -70,11 +74,30 @@ export function computeExpectedBilling(patient: BillingPatientInput, now: Date =
     tcmContactDelay !== null &&
     tcmContactDelay <= 2;
   if (tcmLive) {
+    // Code selection: CMS keys 99495 vs 99496 off documented medical-decision-making complexity,
+    // not the F2F date directly — prefer the clinician-recorded tcm_mdm_level and only fall back
+    // to the F2F-day heuristic when no MDM level has been logged yet.
     const f2fDays = patient.f2f_scheduled_date
       ? Math.floor((new Date(patient.f2f_scheduled_date).getTime() - dischargeDate.getTime()) / DAY_MS)
       : null;
-    const code = f2fDays !== null && f2fDays <= 7 ? "99496" : "99495";
-    events.push({ code, amount: CPT_RATES[code].amount, status: "captured", period_start: periodStart, period_end: periodEnd });
+    const code =
+      patient.tcm_mdm_level === "high"
+        ? "99496"
+        : patient.tcm_mdm_level === "moderate"
+          ? "99495"
+          : f2fDays !== null && f2fDays <= 7
+            ? "99496"
+            : "99495";
+    // Medication reconciliation is a required element of the TCM service itself (CMS TCM
+    // requirements) — the live contact alone isn't sufficient to bill until it's documented.
+    const medReconDone = !!patient.tcm_med_reconciliation_at;
+    events.push({
+      code,
+      amount: CPT_RATES[code].amount,
+      status: medReconDone ? "captured" : "pending",
+      period_start: periodStart,
+      period_end: periodEnd,
+    });
   } else if (daysSinceDischarge <= 2) {
     // Inside the 2-business-day window — accruing, not yet billable, not yet missed.
     events.push({ code: "99495", amount: CPT_RATES["99495"].amount, status: "pending", period_start: periodStart, period_end: periodEnd });
@@ -83,7 +106,7 @@ export function computeExpectedBilling(patient: BillingPatientInput, now: Date =
   // post-discharge — the window has closed, so no event is generated (a "pending" row here would
   // misrepresent a permanently missed claim as still billable).
 
-  // RPM device-supply (99445/99454) + management (99470) — both require the live interactive
+  // RPM device-supply (99445/99454) + management (99457/99470) — both require the live interactive
   // touch; device-day accrual alone is never enough to bill.
   const rpmLive = !!patient.rpm_live_contact_at && !!patient.rpm_live_contact_by && isLiveContact(patient.rpm_live_contact_method);
   if (patient.rpm_days_this_period >= 2) {
@@ -96,7 +119,17 @@ export function computeExpectedBilling(patient: BillingPatientInput, now: Date =
       period_end: periodEnd,
     });
     if (rpmLive) {
-      events.push({ code: "99470", amount: CPT_RATES["99470"].amount, status: "captured", period_start: periodStart, period_end: periodEnd });
+      // 99457 (≥20 min) and 99470 (10–19 min) are mutually exclusive — the logged duration of the
+      // live touch is what CMS audits against, not just that a contact happened.
+      const minutes = patient.rpm_live_contact_minutes;
+      const mgmtCode = minutes !== null && minutes >= 20 ? "99457" : "99470";
+      events.push({
+        code: mgmtCode,
+        amount: CPT_RATES[mgmtCode].amount,
+        status: minutes !== null && minutes >= 10 ? "captured" : "pending",
+        period_start: periodStart,
+        period_end: periodEnd,
+      });
     }
   }
 

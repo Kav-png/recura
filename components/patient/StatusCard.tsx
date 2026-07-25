@@ -3,7 +3,7 @@ import { Card } from "./Card";
 // Framed as reassurance-about-process, not reassurance-about-symptoms — the app never tells
 // the patient they're "fine"; it only says whether the care team has something open to review,
 // per CLAUDE.md's hard safety rail ("notices, explains, escalates to humans").
-export function StatusCard({ hasOpenAlerts }: { hasOpenAlerts: boolean }) {
+export function StatusCard({ hasOpenAlerts, emergencyNumber }: { hasOpenAlerts: boolean; emergencyNumber: string }) {
   return (
     <Card>
       <div className="flex items-start gap-3">
@@ -15,8 +15,7 @@ export function StatusCard({ hasOpenAlerts }: { hasOpenAlerts: boolean }) {
                 Your care team is reviewing something from your last check-in
               </div>
               <p className="text-[14px] text-muted mt-1 leading-relaxed">
-                They may be in touch soon. If you feel seriously unwell right now, call 999 or your GP
-                straightaway — don&rsquo;t wait for a call back.
+                {`They may be in touch soon. If you feel seriously unwell right now, call ${emergencyNumber} or your GP straightaway — don’t wait for a call back.`}
               </p>
             </>
           ) : (

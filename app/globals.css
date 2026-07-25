@@ -8,7 +8,7 @@
   --muted: oklch(52% 0.02 60);
   --muted-bg: oklch(95% 0.012 65);
   --primary: oklch(64% 0.15 35);
-  --sidebar: oklch(24% 0.03 45);
+  --sidebar: oklch(16% 0.005 260);
   --critical: oklch(58% 0.18 25);
   --critical-bg: oklch(93% 0.05 25);
   --warning: oklch(70% 0.14 75);

@@ -3,8 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { computeExpectedBilling } from "@/lib/billing";
+import { DEFAULT_COUNTRY, emergencyNumberFor } from "@/lib/emergency";
 
 const PRACTICE_NAME = "Riverside Cardiology & Pulmonology Group";
+// Seed transcripts/alert text are static strings baked in at reseed time, matching whatever the
+// default country is — changing the Settings country selector afterward affects new, real-time
+// alerts (see lib/checkinExtraction.ts) but does not rewrite this frozen seed text.
+const SEED_EMERGENCY_NUMBER = emergencyNumberFor(DEFAULT_COUNTRY);
 
 type ClinicianKey = "doc" | "np";
 
@@ -35,8 +40,15 @@ type PatientSeed = {
   clinician: ClinicianKey;
   tcmContactDone: boolean;
   tcmContactDaysAgo?: number;
+  // Optional overrides for the audit-trail fields below — when omitted, sensible defaults are
+  // derived (see buildTcmMedReconDone/buildTcmMdmLevel/buildRpmMinutes) so most patients don't
+  // need every field spelled out. A couple of patients override these explicitly to demo the
+  // "live contact happened but not yet billable" states research/03 calls out.
+  tcmMedReconDone?: boolean;
+  tcmMdmLevel?: "moderate" | "high";
   f2fOffsetDays: number;
   rpmDays: number;
+  rpmLiveContactMinutes?: number;
   medications: { name: string; dose: string; frequency: string; status: "new" | "changed" | "stopped" | "unchanged"; reason?: string }[];
   redFlags: { severity: "info" | "warn" | "danger"; title: string; explanation: string; source: "letter" | "call" }[];
   latestCheckin: {
@@ -49,14 +61,17 @@ type PatientSeed = {
   };
   trend: "declining" | "stable";
   alert?: { severity: "info" | "warn" | "danger"; message: string; reviewed: boolean; action?: string; sentHoursAgo: number; source?: "call" | "wearable" };
-  wearableEvent?: {
+  // Multiple discrete events over the discharge window (not a continuous stream) let the
+  // doctor's timeline chart show a creeping pattern building over days, per MASTER-PLAN.md
+  // "Wearables detection layer" — still event-based, never raw HR/HRV/BP waveforms.
+  wearableEvents?: {
     device: string;
     eventType: WearableEventType;
     detail: string;
     severity: "info" | "warn" | "danger";
     detectedHoursAgo: number;
     linkToLatestCheckin: boolean;
-  };
+  }[];
 };
 
 const PATIENTS: PatientSeed[] = [
@@ -93,14 +108,32 @@ const PATIENTS: PatientSeed[] = [
     },
     trend: "declining",
     alert: { severity: "warn", message: "Apple Watch flagged a rising blood pressure pattern over the past 5 days.", reviewed: false, sentHoursAgo: 0.4, source: "wearable" },
-    wearableEvent: {
-      device: "Apple Watch Series 10",
-      eventType: "hypertension_notification",
-      detail: "Hypertension Notification: elevated blood pressure pattern detected across readings over the past 5 days. Screening-level signal, not a diagnosis or a continuous BP reading.",
-      severity: "warn",
-      detectedHoursAgo: 0.5,
-      linkToLatestCheckin: true,
-    },
+    wearableEvents: [
+      {
+        device: "Apple Watch Series 10",
+        eventType: "hypertension_notification",
+        detail: "Hypertension Notification: blood pressure pattern trending upward across readings, within normal range but rising.",
+        severity: "info",
+        detectedHoursAgo: 54,
+        linkToLatestCheckin: false,
+      },
+      {
+        device: "Apple Watch Series 10",
+        eventType: "hypertension_notification",
+        detail: "Hypertension Notification: elevated blood pressure pattern persisting for a second day.",
+        severity: "warn",
+        detectedHoursAgo: 28,
+        linkToLatestCheckin: false,
+      },
+      {
+        device: "Apple Watch Series 10",
+        eventType: "hypertension_notification",
+        detail: "Hypertension Notification: elevated blood pressure pattern detected across readings over the past 5 days. Screening-level signal, not a diagnosis or a continuous BP reading.",
+        severity: "warn",
+        detectedHoursAgo: 0.5,
+        linkToLatestCheckin: true,
+      },
+    ],
   },
   {
     name: "James Whitfield",
@@ -150,7 +183,7 @@ const PATIENTS: PatientSeed[] = [
       transcript: [
         { speaker: "agent", text: "Good morning Priya, how are you feeling?" },
         { speaker: "patient", text: "My chest feels tight and I have not slept well, I am quite short of breath." },
-        { speaker: "agent", text: "That sounds serious. Please call 999 now — I am alerting your care team immediately." },
+        { speaker: "agent", text: `That sounds serious. Please call ${SEED_EMERGENCY_NUMBER} now — I am alerting your care team immediately.` },
       ],
       summary: "Reports chest tightness and shortness of breath. Escalated immediately per protocol.",
       mood: "distressed",
@@ -158,7 +191,7 @@ const PATIENTS: PatientSeed[] = [
       flagsRaised: ["chest_tightness", "shortness_of_breath"],
     },
     trend: "declining",
-    alert: { severity: "danger", message: "Chest tightness and shortness of breath reported — 999 advised, immediate review required.", reviewed: false, sentHoursAgo: 0.03 },
+    alert: { severity: "danger", message: `Chest tightness and shortness of breath reported — ${SEED_EMERGENCY_NUMBER} advised, immediate review required.`, reviewed: false, sentHoursAgo: 0.03 },
   },
   {
     name: "Robert Klein",
@@ -189,14 +222,16 @@ const PATIENTS: PatientSeed[] = [
     },
     trend: "stable",
     alert: { severity: "warn", message: "Apple Watch detected a possible hard fall at home; no follow-up call yet.", reviewed: false, sentHoursAgo: 2.5, source: "wearable" },
-    wearableEvent: {
-      device: "Apple Watch Series 8",
-      eventType: "fall_detected",
-      detail: "Fall Detected: hard fall detected at home. Patient did not respond to the on-wrist check-in prompt within the expected window.",
-      severity: "warn",
-      detectedHoursAgo: 2.5,
-      linkToLatestCheckin: false,
-    },
+    wearableEvents: [
+      {
+        device: "Apple Watch Series 8",
+        eventType: "fall_detected",
+        detail: "Fall Detected: hard fall detected at home. Patient did not respond to the on-wrist check-in prompt within the expected window.",
+        severity: "warn",
+        detectedHoursAgo: 2.5,
+        linkToLatestCheckin: false,
+      },
+    ],
   },
   {
     name: "Sofia Ibarra",
@@ -239,6 +274,9 @@ const PATIENTS: PatientSeed[] = [
     tcmContactDaysAgo: 19,
     f2fOffsetDays: -10,
     rpmDays: 20,
+    // Demo of the duration-log gap: the live RPM touch happened but ran short, so 99457/99470
+    // stay "pending" until a clinician documents ≥10 minutes (research/03 audit-trail rules).
+    rpmLiveContactMinutes: 8,
     medications: [{ name: "Tiotropium", dose: "18mcg", frequency: "Once daily", status: "unchanged" }],
     redFlags: [],
     latestCheckin: {
@@ -261,6 +299,10 @@ const PATIENTS: PatientSeed[] = [
     clinician: "np",
     tcmContactDone: true,
     tcmContactDaysAgo: 6,
+    // Demo of the med-reconciliation gap: the live 2-day contact happened, but CMS treats
+    // reconciliation as its own required TCM element, so the code stays "pending" until it's
+    // logged separately (research/03 audit-trail rules).
+    tcmMedReconDone: false,
     f2fOffsetDays: 0,
     rpmDays: 7,
     medications: [{ name: "Digoxin", dose: "0.125mg", frequency: "Once daily", status: "unchanged" }],
@@ -278,14 +320,16 @@ const PATIENTS: PatientSeed[] = [
     },
     trend: "stable",
     alert: { severity: "info", message: "Apple Watch flagged an irregular heart rhythm consistent with possible AFib.", reviewed: true, action: "none", sentHoursAgo: 11, source: "wearable" },
-    wearableEvent: {
-      device: "Apple Watch Series 9",
-      eventType: "irregular_rhythm_notification",
-      detail: "Irregular Rhythm Notification: pattern consistent with possible atrial fibrillation detected during a period of rest.",
-      severity: "info",
-      detectedHoursAgo: 11.2,
-      linkToLatestCheckin: true,
-    },
+    wearableEvents: [
+      {
+        device: "Apple Watch Series 9",
+        eventType: "irregular_rhythm_notification",
+        detail: "Irregular Rhythm Notification: pattern consistent with possible atrial fibrillation detected during a period of rest.",
+        severity: "info",
+        detectedHoursAgo: 11.2,
+        linkToLatestCheckin: true,
+      },
+    ],
   },
   {
     name: "Miguel Ortiz",
@@ -308,7 +352,7 @@ const PATIENTS: PatientSeed[] = [
       transcript: [
         { speaker: "agent", text: "Good morning Miguel, how are you feeling today?" },
         { speaker: "patient", text: "Very breathless, even sitting still, and my lips feel a bit blue." },
-        { speaker: "agent", text: "Please call 999 now — I am alerting your care team immediately." },
+        { speaker: "agent", text: `Please call ${SEED_EMERGENCY_NUMBER} now — I am alerting your care team immediately.` },
       ],
       summary: "Severe breathlessness at rest with possible cyanosis. Escalated immediately per protocol.",
       mood: "distressed",
@@ -316,15 +360,33 @@ const PATIENTS: PatientSeed[] = [
       flagsRaised: ["severe_breathlessness", "cyanosis"],
     },
     trend: "declining",
-    alert: { severity: "danger", message: "Apple Watch flagged a high resting heart rate, followed by a call confirming severe breathlessness — 999 advised, immediate review required.", reviewed: false, sentHoursAgo: 0.18, source: "wearable" },
-    wearableEvent: {
-      device: "Apple Watch Series 10",
-      eventType: "high_heart_rate",
-      detail: "High Heart Rate Notification: resting heart rate elevated to 118 bpm, well above baseline.",
-      severity: "danger",
-      detectedHoursAgo: 0.2,
-      linkToLatestCheckin: true,
-    },
+    alert: { severity: "danger", message: `Apple Watch flagged a high resting heart rate, followed by a call confirming severe breathlessness — ${SEED_EMERGENCY_NUMBER} advised, immediate review required.`, reviewed: false, sentHoursAgo: 0.18, source: "wearable" },
+    wearableEvents: [
+      {
+        device: "Apple Watch Series 10",
+        eventType: "high_heart_rate",
+        detail: "High Heart Rate Notification: resting heart rate mildly elevated versus baseline.",
+        severity: "info",
+        detectedHoursAgo: 40,
+        linkToLatestCheckin: false,
+      },
+      {
+        device: "Apple Watch Series 10",
+        eventType: "high_heart_rate",
+        detail: "High Heart Rate Notification: resting heart rate trending higher for a second day.",
+        severity: "warn",
+        detectedHoursAgo: 15,
+        linkToLatestCheckin: false,
+      },
+      {
+        device: "Apple Watch Series 10",
+        eventType: "high_heart_rate",
+        detail: "High Heart Rate Notification: resting heart rate elevated to 118 bpm, well above baseline.",
+        severity: "danger",
+        detectedHoursAgo: 0.2,
+        linkToLatestCheckin: true,
+      },
+    ],
   },
   {
     name: "Daniela Costa",
@@ -469,7 +531,7 @@ export async function reloadDemoData() {
 
   const { data: practice, error: practiceErr } = await supabase
     .from("practices")
-    .insert({ name: PRACTICE_NAME, is_demo: true })
+    .insert({ name: PRACTICE_NAME, is_demo: true, country: DEFAULT_COUNTRY })
     .select()
     .single();
   if (practiceErr) throw practiceErr;
@@ -488,6 +550,14 @@ export async function reloadDemoData() {
   const now = Date.now();
   const daysAgo = (n: number) => new Date(now - n * 86400000).toISOString().slice(0, 10);
   const hoursAgoIso = (h: number) => new Date(now - h * 3600000).toISOString();
+
+  // Defaults for the audit-trail fields (research/03 "Documentation & audit-trail requirements"):
+  // most seeded patients get a fully-compliant trail so the demo shows healthy captured billing;
+  // a couple of patients override these to demonstrate the "live contact happened but not yet
+  // billable" pending states (see tcmMedReconDone/rpmLiveContactMinutes overrides above).
+  const tcmMedReconDoneFor = (p: PatientSeed) => p.tcmMedReconDone ?? p.tcmContactDone;
+  const tcmMdmLevelFor = (p: PatientSeed) => p.tcmMdmLevel ?? (p.f2fOffsetDays + p.dischargeDaysAgo <= 7 ? "high" : "moderate");
+  const rpmMinutesFor = (p: PatientSeed) => (p.rpmDays >= 2 ? p.rpmLiveContactMinutes ?? 22 : null);
 
   for (const p of PATIENTS) {
     const { data: patient, error: patientErr } = await supabase
@@ -511,9 +581,12 @@ export async function reloadDemoData() {
         consent_captured_at: hoursAgoIso(p.dischargeDaysAgo * 24),
         tcm_contact_by: p.tcmContactDone ? clinicianIds[p.clinician] : null,
         tcm_contact_method: p.tcmContactDone ? "phone_live" : null,
+        tcm_med_reconciliation_at: p.tcmContactDone && tcmMedReconDoneFor(p) ? hoursAgoIso((p.tcmContactDaysAgo ?? p.dischargeDaysAgo) * 24) : null,
+        tcm_mdm_level: p.tcmContactDone ? tcmMdmLevelFor(p) : null,
         rpm_live_contact_at: p.rpmDays >= 2 ? hoursAgoIso(24) : null,
         rpm_live_contact_by: p.rpmDays >= 2 ? clinicianIds[p.clinician] : null,
         rpm_live_contact_method: p.rpmDays >= 2 ? "phone_live" : null,
+        rpm_live_contact_minutes: rpmMinutesFor(p),
       })
       .select()
       .single();
@@ -575,23 +648,25 @@ export async function reloadDemoData() {
     );
     if (historyErr) throw historyErr;
 
-    let wearableEventId: string | null = null;
-    if (p.wearableEvent) {
+    // Insert oldest-first so the timeline chart can read a natural build-up; the alert (if any)
+    // links to the most recent event, matching how the demo narrative pairs "latest signal → alert".
+    let latestWearableEventId: string | null = null;
+    for (const we of p.wearableEvents ?? []) {
       const { data: wearableEvent, error: weErr } = await supabase
         .from("wearable_events")
         .insert({
           patient_id: patient.id,
-          device: p.wearableEvent.device,
-          event_type: p.wearableEvent.eventType,
-          detail: p.wearableEvent.detail,
-          severity: p.wearableEvent.severity,
-          detected_at: hoursAgoIso(p.wearableEvent.detectedHoursAgo),
-          triggered_checkin_id: p.wearableEvent.linkToLatestCheckin ? latestCheckin.id : null,
+          device: we.device,
+          event_type: we.eventType,
+          detail: we.detail,
+          severity: we.severity,
+          detected_at: hoursAgoIso(we.detectedHoursAgo),
+          triggered_checkin_id: we.linkToLatestCheckin ? latestCheckin.id : null,
         })
         .select()
         .single();
       if (weErr) throw weErr;
-      wearableEventId = wearableEvent.id;
+      latestWearableEventId = wearableEvent.id;
     }
 
     if (p.alert) {
@@ -607,7 +682,7 @@ export async function reloadDemoData() {
         action_taken: p.alert.reviewed ? p.alert.action ?? "none" : "none",
         sent_at: hoursAgoIso(p.alert.sentHoursAgo),
         source,
-        wearable_event_id: source === "wearable" ? wearableEventId : null,
+        wearable_event_id: source === "wearable" ? latestWearableEventId : null,
       });
       if (error) throw error;
     }
@@ -623,11 +698,14 @@ export async function reloadDemoData() {
         tcm_contact_by: p.tcmContactDone ? clinicianIds[p.clinician] : null,
         tcm_contact_method: p.tcmContactDone ? "phone_live" : null,
         tcm_contact_date: p.tcmContactDaysAgo != null ? daysAgo(p.tcmContactDaysAgo) : null,
+        tcm_med_reconciliation_at: p.tcmContactDone && tcmMedReconDoneFor(p) ? hoursAgoIso((p.tcmContactDaysAgo ?? p.dischargeDaysAgo) * 24) : null,
+        tcm_mdm_level: p.tcmContactDone ? tcmMdmLevelFor(p) : null,
         f2f_scheduled_date: daysAgo(-p.f2fOffsetDays),
         rpm_days_this_period: p.rpmDays,
         rpm_live_contact_at: p.rpmDays >= 2 ? hoursAgoIso(24) : null,
         rpm_live_contact_by: p.rpmDays >= 2 ? clinicianIds[p.clinician] : null,
         rpm_live_contact_method: p.rpmDays >= 2 ? "phone_live" : null,
+        rpm_live_contact_minutes: rpmMinutesFor(p),
       },
       new Date(now)
     );

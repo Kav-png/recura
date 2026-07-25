@@ -15,7 +15,7 @@ An ElevenLabs conversational agent phone-calls the patient, references their ACT
    - Q2: "Any dizziness, weakness, or anything that worries you?"
    - Q3 (condition-specific validated PROM item, not an ad-hoc scale): HF → KCCQ-12-style "How much has shortness of breath limited your daily activities this week?" / COPD → CAT/mMRC-lite "How breathless have you been doing everyday activities?" — patient answers on the same 0–4 verbal scale the call already elicits, no new UI.
    - Close: "Lovely, [name]. Same time tomorrow. Your family can see you're doing well."
-3. Safety branch (hard rule from root CLAUDE.md): severe symptom mentioned → ONLY say the 999 line + end call gracefully. Test this branch explicitly.
+3. Safety branch (hard rule from root CLAUDE.md): severe symptom mentioned → ONLY say the emergency-number line (country-driven, `lib/emergency.ts` — not hardcoded to 999) + end call gracefully. Test this branch explicitly.
 4. Webhook/polling route to receive the transcript → extract {answers, flags_raised[], mood, proms_score} (one Claude call over the transcript is fine) → insert into checkins. `proms_score` = the 0–4 PROM answer, condition-scoped by `patients.condition_pack`.
 5. Flag detection triggers: missed anticoagulant, "dizzy/weak/numb/chest/bleeding/confused", mood ≤ 3, proms_score ≥ 3 (high symptom burden).
 

@@ -1,6 +1,8 @@
 import { severityMeta, daysSince, timeAgo, type Severity } from "@/lib/status";
 import { CheckinCallButton } from "@/components/doctor/CheckinCallButton";
 import { ComplianceActions } from "@/components/doctor/ComplianceActions";
+import { PatientAlertBar } from "@/components/doctor/PatientAlertBar";
+import { WEARABLE_EVENT_LABELS, WEARABLE_SEVERITY_COLOR } from "@/lib/wearableEvents";
 
 type Patient = {
   id: string;
@@ -11,10 +13,13 @@ type Patient = {
   tcm_contact_done: boolean;
   tcm_contact_date: string | null;
   tcm_contact_method: string | null;
+  tcm_med_reconciliation_at: string | null;
+  tcm_mdm_level: string | null;
   f2f_scheduled_date: string | null;
   rpm_days_this_period: number;
   rpm_live_contact_at: string | null;
   rpm_live_contact_method: string | null;
+  rpm_live_contact_minutes: number | null;
   consent_captured_at: string | null;
   clinicians: { name: string; role: string } | null;
   tcm_clinician: { name: string } | null;
@@ -49,15 +54,10 @@ const CODE_LABELS: Record<string, string> = {
   "99445": "RPM device supply (2–15 days data)",
   "99454": "RPM device supply (16+ days data)",
   "99470": "RPM management, first 10 min",
+  "99457": "RPM management, first 20 min",
 };
 
-const WEARABLE_EVENT_LABELS: Record<string, string> = {
-  hypertension_notification: "Hypertension Notification",
-  irregular_rhythm_notification: "Irregular Rhythm Notification",
-  high_heart_rate: "High Heart Rate",
-  low_heart_rate: "Low Heart Rate",
-  fall_detected: "Fall Detected",
-};
+const MDM_LABELS: Record<string, string> = { moderate: "Moderate complexity", high: "High complexity" };
 
 const medStatusColor: Record<string, string> = {
   new: "bg-primary",
@@ -66,36 +66,76 @@ const medStatusColor: Record<string, string> = {
   unchanged: "bg-stable",
 };
 
-function TrendChart({ checkins }: { checkins: Checkin[] }) {
-  const scored = checkins.filter((c) => c.proms_score != null);
-  if (scored.length < 2) return null;
+// Plots PROMs alongside discrete wearable notifications on one real (day-since-discharge)
+// timeline, so the clinician can see whether device signals and symptom trend move together —
+// per MASTER-PLAN.md, markers are discrete pre-classified events, never a continuous HR/HRV/BP
+// waveform.
+function TrendChart({
+  checkins,
+  wearableEvents,
+  dischargeDate,
+}: {
+  checkins: Checkin[];
+  wearableEvents: WearableEvent[];
+  dischargeDate: string;
+}) {
+  const scored = [...checkins]
+    .filter((c) => c.proms_score != null)
+    .sort((a, b) => new Date(a.called_at).getTime() - new Date(b.called_at).getTime());
+  if (scored.length < 2 && wearableEvents.length === 0) return null;
+
   const w = 720;
-  const h = 160;
-  const pad = 12;
+  const h = 180;
+  const pad = 14;
   const max = 100;
-  const points = scored
-    .map((c, i) => {
-      const x = (i / (scored.length - 1)) * (w - pad * 2) + pad;
-      const y = h - pad - ((c.proms_score! / max) * (h - pad * 2));
-      return `${x},${y}`;
-    })
-    .join(" ");
+
+  const dischargeMs = new Date(dischargeDate).getTime();
+  const totalDays = Math.max(1, (Date.now() - dischargeMs) / 86400000);
+  const dayOffset = (iso: string) => (new Date(iso).getTime() - dischargeMs) / 86400000;
+  const xForDay = (day: number) => pad + (Math.min(Math.max(day, 0), totalDays) / totalDays) * (w - pad * 2);
+
+  const promsPoints = scored.map((c) => ({
+    x: xForDay(dayOffset(c.called_at)),
+    y: h - pad - ((c.proms_score! / max) * (h - pad * 2)),
+    checkin: c,
+  }));
+  const polyline = promsPoints.map((p) => `${p.x},${p.y}`).join(" ");
   const last = scored[scored.length - 1];
 
   return (
     <div className="bg-surface rounded-2xl border border-border p-4 sm:p-5">
       <div className="flex items-center justify-between mb-3.5">
-        <div className="font-heading font-bold text-[15px]">PROMs Score &middot; Since Discharge</div>
-        <div className="text-xs text-muted hidden sm:block">Lower = more symptomatic</div>
+        <div className="font-heading font-bold text-[15px]">PROMs &amp; Wearable Signals &middot; Since Discharge</div>
+        <div className="text-xs text-muted hidden sm:block">Line = PROMs (lower = more symptomatic) &middot; dots = device notifications</div>
       </div>
       <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} className="block">
         <line x1="0" y1={h * 0.25} x2={w} y2={h * 0.25} stroke="var(--border)" strokeWidth="1" />
         <line x1="0" y1={h * 0.5} x2={w} y2={h * 0.5} stroke="var(--border)" strokeWidth="1" />
         <line x1="0" y1={h * 0.75} x2={w} y2={h * 0.75} stroke="var(--border)" strokeWidth="1" />
-        <polyline points={points} fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={points.split(" ").pop()?.split(",")[0]} cy={points.split(" ").pop()?.split(",")[1]} r="5" fill="var(--primary)" />
+        {promsPoints.length > 1 && (
+          <polyline points={polyline} fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        )}
+        {promsPoints.map((p, i) => (
+          <circle key={p.checkin.id} cx={p.x} cy={p.y} r={i === promsPoints.length - 1 ? 5 : 3.5} fill="var(--primary)">
+            <title>{`Check-in ${timeAgo(p.checkin.called_at)} — PROMs ${p.checkin.proms_score}`}</title>
+          </circle>
+        ))}
+        {wearableEvents.map((we) => {
+          const x = xForDay(dayOffset(we.detected_at));
+          const color = WEARABLE_SEVERITY_COLOR[we.severity] ?? "var(--muted)";
+          return (
+            <g key={we.id}>
+              <line x1={x} y1={pad} x2={x} y2={h - pad} stroke={color} strokeWidth="1.5" strokeDasharray="3 3" opacity="0.5" />
+              <circle cx={x} cy={pad + 5} r="4.5" fill={color}>
+                <title>{`${WEARABLE_EVENT_LABELS[we.event_type] ?? we.event_type} — ${timeAgo(we.detected_at)}`}</title>
+              </circle>
+            </g>
+          );
+        })}
       </svg>
-      <div className="text-xs text-muted mt-1">Latest: {last.proms_score} on {timeAgo(last.called_at)}</div>
+      <div className="text-xs text-muted mt-1">
+        {last ? <>Latest PROMs: {last.proms_score} on {timeAgo(last.called_at)}</> : "No PROMs check-ins yet."}
+      </div>
     </div>
   );
 }
@@ -117,12 +157,17 @@ export function PatientDetail({
   billing: BillingEvent[];
   wearableEvents: WearableEvent[];
 }) {
-  const worstAlert = alerts.filter((a) => !a.reviewed_at).sort((a, b) => {
+  const unreviewedByPriority = alerts.filter((a) => !a.reviewed_at).sort((a, b) => {
     const rank: Record<string, number> = { danger: 3, warn: 2, info: 1 };
     return rank[b.severity] - rank[a.severity];
-  })[0];
-  const statusSeverity: Severity = (worstAlert?.severity as Severity) ?? "stable";
-  const statusMeta = severityMeta[statusSeverity];
+  });
+  const mostRecentAlert = [...alerts].sort(
+    (a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()
+  )[0];
+  // Prefer the highest-severity thing still needing a decision; fall back to the
+  // most recent alert (even if already reviewed) so the header keeps showing what
+  // just happened instead of reverting to a blank "stable" state after review.
+  const headerAlert = unreviewedByPriority[0] ?? mostRecentAlert;
   const orderedCheckins = [...checkins].sort((a, b) => new Date(b.called_at).getTime() - new Date(a.called_at).getTime());
   const latest = orderedCheckins[0];
 
@@ -143,31 +188,13 @@ export function PatientDetail({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className={`px-3.5 sm:px-4 py-2 rounded-[10px] text-[12.5px] sm:text-[13px] font-semibold ${statusMeta.bg} ${statusMeta.text}`}>
-            {statusMeta.label}
-            {worstAlert ? ` · ${worstAlert.message}` : " · No unreviewed alerts"}
-          </div>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
+          <PatientAlertBar alert={headerAlert} />
           <CheckinCallButton patientId={patient.id} patientName={patient.name} />
         </div>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard label="Latest PROMs" value={latest?.proms_score ?? "—"} unit="/ 100" color={statusMeta.dot} />
-        <StatCard label="Days post-discharge" value={daysSince(patient.discharge_date)} unit="days" color="bg-stable" />
-        <StatCard
-          label="TCM 2-day contact"
-          value={patient.tcm_contact_done ? "Done" : "Pending"}
-          unit=""
-          color={patient.tcm_contact_done ? "bg-stable" : "bg-warning"}
-        />
-        <StatCard label="RPM days this period" value={patient.rpm_days_this_period} unit="/ 30" color="bg-stable" />
-      </div>
-
-      <TrendChart checkins={orderedCheckins} />
-
-      {/* Red flags */}
+      {/* Red flags — the evidence, front and center under the decision bar */}
       {redFlags.length > 0 && (
         <div className="bg-surface rounded-2xl border border-border p-4 sm:p-5">
           <div className="font-heading font-bold text-[15px] mb-3.5">Red Flags</div>
@@ -218,6 +245,21 @@ export function PatientDetail({
           </div>
         </div>
       )}
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard label="Latest PROMs" value={latest?.proms_score ?? "—"} unit="/ 100" color={severityMeta[(headerAlert?.severity as Severity) ?? "stable"].dot} />
+        <StatCard label="Days post-discharge" value={daysSince(patient.discharge_date)} unit="days" color="bg-stable" />
+        <StatCard
+          label="TCM 2-day contact"
+          value={patient.tcm_contact_done ? "Done" : "Pending"}
+          unit=""
+          color={patient.tcm_contact_done ? "bg-stable" : "bg-warning"}
+        />
+        <StatCard label="RPM days this period" value={patient.rpm_days_this_period} unit="/ 30" color="bg-stable" />
+      </div>
+
+      <TrendChart checkins={orderedCheckins} wearableEvents={wearableEvents} dischargeDate={patient.discharge_date} />
 
       {/* Medications */}
       <div className="bg-surface rounded-2xl border border-border p-4 sm:p-5">
@@ -327,17 +369,34 @@ export function PatientDetail({
             by={patient.tcm_clinician?.name ?? null}
             method={patient.tcm_contact_method}
             at={patient.tcm_contact_date}
+            extra={patient.tcm_mdm_level ? MDM_LABELS[patient.tcm_mdm_level] ?? patient.tcm_mdm_level : null}
           />
+          <div className={`p-3 rounded-xl ${patient.tcm_med_reconciliation_at ? "bg-stable-bg" : "bg-warning-bg"}`}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-[13px] font-semibold">Medication reconciliation</div>
+              <div className={`text-[11px] font-semibold ${patient.tcm_med_reconciliation_at ? "text-stable" : "text-warning"}`}>
+                {patient.tcm_med_reconciliation_at ? "Complete" : "Pending"}
+              </div>
+            </div>
+            {patient.tcm_med_reconciliation_at && (
+              <div className="text-[12px] text-foreground/70 mt-1">
+                {new Date(patient.tcm_med_reconciliation_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} &middot; required element of the TCM service, not just the 2-day contact
+              </div>
+            )}
+          </div>
           <ComplianceRow
             label="RPM live communication"
             done={!!patient.rpm_live_contact_at}
             by={patient.rpm_clinician?.name ?? null}
             method={patient.rpm_live_contact_method}
             at={patient.rpm_live_contact_at}
+            extra={patient.rpm_live_contact_minutes != null ? `${patient.rpm_live_contact_minutes} min logged` : null}
           />
           <ComplianceActions
             patientId={patient.id}
             tcmDone={patient.tcm_contact_done}
+            tcmMedReconDone={!!patient.tcm_med_reconciliation_at}
+            tcmMdmLevel={patient.tcm_mdm_level}
             rpmLiveDone={!!patient.rpm_live_contact_at}
           />
           <div className="flex items-center justify-between p-3 rounded-xl bg-muted-bg">
@@ -364,12 +423,14 @@ function ComplianceRow({
   by,
   method,
   at,
+  extra,
 }: {
   label: string;
   done: boolean;
   by: string | null;
   method: string | null;
   at: string | null;
+  extra?: string | null;
 }) {
   return (
     <div className={`p-3 rounded-xl ${done ? "bg-stable-bg" : "bg-warning-bg"}`}>
@@ -381,6 +442,7 @@ function ComplianceRow({
         <div className="text-[12px] text-foreground/70 mt-1">
           By {by} &middot; {method ? METHOD_LABELS[method] ?? method : "method not recorded"}
           {at ? <> &middot; {new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</> : null}
+          {extra ? <> &middot; {extra}</> : null}
         </div>
       )}
     </div>

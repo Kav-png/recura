@@ -14,7 +14,7 @@ Documented in [strategy/us-readmissions-thesis.md](strategy/us-readmissions-thes
 
 ## What changes vs. the original consumer plan
 
-- **Alert routing**: red-flag check-in answers now escalate to the assigned clinician's dashboard (with an urgent-review state), not a family WhatsApp/Telegram message. The "call 999 now" instruction to the patient for severe symptoms is unchanged — that's a hard safety rail, not a business decision.
+- **Alert routing**: red-flag check-in answers now escalate to the assigned clinician's dashboard (with an urgent-review state), not a family WhatsApp/Telegram message. The "call [emergency number] now" instruction to the patient for severe symptoms is unchanged in kind — that's a hard safety rail, not a business decision — but the number itself is no longer hardcoded to "999": it's driven by the practice's configured country (`practices.country`, `lib/emergency.ts`, set via Settings → Practice region), since this pivot is US-Medicare-framed and the default is now US/911. Real-time alert generation (`lib/checkinExtraction.ts`) and the patient portal (`StatusCard`, `SelfCheckinForm`) read this live; seeded/historical transcript text is frozen at whatever country was default when seeded.
 - **Identity model**: previously one hardcoded family; now a hardcoded demo **practice** with a hardcoded demo **clinician** (Dr. Maria Alvarez, matching the Claude Design mock) and a panel of demo patients. Still no real auth for the hackathon — a single practice_id constant is fine.
 - **Billing becomes first-class data**, not a narrative footnote — it's a table (`billing_events`) that both the doctor dashboard (status chips) and the practice dashboard (aggregate $) read from.
 
