@@ -108,7 +108,7 @@ function TrendChart({
   const last = scored[scored.length - 1];
 
   return (
-    <div className="glass rounded-2xl p-4 sm:p-5">
+    <div className="surface rounded-2xl p-4 sm:p-5">
       <div className="flex items-center justify-between mb-3.5">
         <div className="font-heading font-bold text-[15px]">PROMs &amp; Wearable Signals &middot; Since Discharge</div>
         <div className="text-xs text-muted hidden sm:block">Line = PROMs (lower = more symptomatic) &middot; dots = device notifications</div>
@@ -181,7 +181,7 @@ export function PatientDetail({
   return (
     <div className="flex flex-col gap-4 sm:gap-5 min-w-0">
       {/* Header */}
-      <div className="glass rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between flex-wrap gap-3">
+      <div className="surface rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/70 flex items-center justify-center font-heading font-bold text-white text-base sm:text-lg shrink-0">
             {patient.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
@@ -221,7 +221,7 @@ export function PatientDetail({
 
       {/* Allergies — safety-critical, shown alongside red flags */}
       {allergies.length > 0 && (
-        <div className="glass rounded-2xl p-4 sm:p-5">
+        <div className="surface rounded-2xl p-4 sm:p-5">
           <div className="font-heading font-bold text-[15px] mb-3.5">Allergies &amp; Adverse Reactions</div>
           <div className="flex flex-col gap-2.5">
             {allergies.map((a) => (
@@ -242,7 +242,7 @@ export function PatientDetail({
 
       {/* Red flags — the evidence, front and center under the decision bar */}
       {redFlags.length > 0 && (
-        <div className="glass rounded-2xl p-4 sm:p-5">
+        <div className="surface rounded-2xl p-4 sm:p-5">
           <div className="font-heading font-bold text-[15px] mb-3.5">Red Flags</div>
           <div className="flex flex-col gap-2.5">
             {redFlags.map((f) => {
@@ -261,7 +261,7 @@ export function PatientDetail({
 
       {/* Wearable signals */}
       {wearableEvents.length > 0 && (
-        <div className="glass rounded-2xl p-4 sm:p-5">
+        <div className="surface rounded-2xl p-4 sm:p-5">
           <div className="flex items-center justify-between mb-3.5">
             <div className="font-heading font-bold text-[15px]">Wearable Signals</div>
             <div className="text-xs text-muted hidden sm:block">Discrete device notifications, not continuous monitoring</div>
@@ -308,7 +308,7 @@ export function PatientDetail({
       <TrendChart checkins={orderedCheckins} wearableEvents={wearableEvents} dischargeDate={patient.discharge_date} />
 
       {/* Medications */}
-      <div className="glass rounded-2xl p-4 sm:p-5">
+      <div className="surface rounded-2xl p-4 sm:p-5">
         <div className="font-heading font-bold text-[15px] mb-3">Active Medications</div>
         <div className="flex flex-col">
           {medications.map((m) => (
@@ -328,7 +328,7 @@ export function PatientDetail({
       </div>
 
       {/* Check-ins & transcripts */}
-      <div className="glass rounded-2xl p-4 sm:p-5">
+      <div className="surface rounded-2xl p-4 sm:p-5">
         <div className="font-heading font-bold text-[15px] mb-3">Check-in History &middot; Call Transcripts &amp; PROMs</div>
         <div className="flex flex-col gap-2">
           {orderedCheckins.map((c) => (
@@ -364,7 +364,7 @@ export function PatientDetail({
       </div>
 
       {/* Billing status */}
-      <div className="glass rounded-2xl p-4 sm:p-5">
+      <div className="surface rounded-2xl p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="font-heading font-bold text-[15px]">Episode Billing Status</div>
           {billing.length > 0 && (
@@ -402,7 +402,7 @@ export function PatientDetail({
       </div>
 
       {/* Compliance / billing audit trail */}
-      <div className="glass rounded-2xl p-4 sm:p-5">
+      <div className="surface rounded-2xl p-4 sm:p-5">
         <div className="font-heading font-bold text-[15px] mb-1">Compliance Log</div>
         <div className="text-[12px] text-muted mb-3.5">
           CMS requires the TCM 2-day contact and RPM monthly communication to be made by a qualified clinician,
@@ -497,7 +497,7 @@ function ComplianceRow({
 
 function StatCard({ label, value, unit, color }: { label: string; value: string | number; unit: string; color: string }) {
   return (
-    <div className="glass rounded-2xl p-3.5 sm:p-4.5">
+    <div className="surface rounded-2xl p-3.5 sm:p-4.5">
       <div className="flex items-center justify-between mb-2">
         <div className="text-[11px] sm:text-xs text-muted font-semibold uppercase tracking-wide">{label}</div>
         <div className={`w-2 h-2 rounded-full shrink-0 ${color}`} />

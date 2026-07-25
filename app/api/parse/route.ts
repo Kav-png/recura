@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { getCurrentClinician } from "@/lib/queries";
 import { parseLetterImage, isSupportedImageType } from "@/lib/letterParse";
 import { generatePatientAccessCode } from "@/lib/patientAccessCode";
+import { findAllergyMedicationConflicts, buildAllergyConflictRedFlags } from "@/lib/allergyCheck";
 
 export async function POST(request: Request) {
   try {
@@ -79,6 +80,20 @@ export async function POST(request: Request) {
         }))
       );
       if (allergyError) throw allergyError;
+    }
+
+    const allergyConflicts = findAllergyMedicationConflicts(parsed.medications, parsed.allergies);
+    if (allergyConflicts.length > 0) {
+      const { error: conflictError } = await supabase.from("red_flags").insert(
+        buildAllergyConflictRedFlags(allergyConflicts).map((flag) => ({
+          patient_id: patient.id,
+          severity: flag.severity,
+          title: flag.title,
+          explanation_plain_english: flag.explanation_plain_english,
+          source: "letter",
+        }))
+      );
+      if (conflictError) throw conflictError;
     }
 
     return NextResponse.json({ patientId: patient.id, summary: parsed.plain_english_summary });

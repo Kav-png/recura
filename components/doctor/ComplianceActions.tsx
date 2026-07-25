@@ -43,14 +43,14 @@ export function ComplianceActions({
   const [rpmMinutes, setRpmMinutes] = useState(20);
 
   return (
-    <div className="flex flex-col gap-2 mt-1 p-3 rounded-xl glass-sm">
+    <div className="flex flex-col gap-2 mt-1 p-3 rounded-xl surface-sm">
       <div className="text-[11px] font-semibold text-muted uppercase tracking-wide">Log a live clinician contact</div>
       <div className="flex flex-wrap items-center gap-2">
         <select
           value={method}
           onChange={(e) => setMethod(e.target.value as LiveContactMethod)}
           disabled={isPending}
-          className="text-[12px] glass-sm rounded-lg px-2 py-1.5"
+          className="text-[12px] surface-sm rounded-lg px-2 py-1.5"
         >
           {METHODS.map((m) => (
             <option key={m.value} value={m.value}>
@@ -74,7 +74,7 @@ export function ComplianceActions({
           onChange={(e) => setRpmMinutes(Number(e.target.value))}
           disabled={isPending}
           title="Minutes of live RPM communication (≥20 bills 99457, 10-19 bills 99470)"
-          className="w-16 text-[12px] glass-sm rounded-lg px-2 py-1.5"
+          className="w-16 text-[12px] surface-sm rounded-lg px-2 py-1.5"
         />
         <button
           type="button"
@@ -88,7 +88,7 @@ export function ComplianceActions({
           type="button"
           disabled={isPending}
           onClick={() => startTransition(() => logRpmDeviceDay(patientId))}
-          className="text-[12px] font-semibold px-3 py-1.5 rounded-lg glass-sm disabled:opacity-40"
+          className="text-[12px] font-semibold px-3 py-1.5 rounded-lg surface-sm disabled:opacity-40"
         >
           +1 RPM device day
         </button>
@@ -98,7 +98,7 @@ export function ComplianceActions({
           value={mdmLevel}
           onChange={(e) => setMdmLevel(e.target.value as TcmMdmLevel)}
           disabled={isPending}
-          className="text-[12px] glass-sm rounded-lg px-2 py-1.5"
+          className="text-[12px] surface-sm rounded-lg px-2 py-1.5"
         >
           {MDM_LEVELS.map((m) => (
             <option key={m.value} value={m.value}>
@@ -110,7 +110,7 @@ export function ComplianceActions({
           type="button"
           disabled={isPending}
           onClick={() => startTransition(() => recordTcmMdmLevel(patientId, mdmLevel))}
-          className="text-[12px] font-semibold px-3 py-1.5 rounded-lg glass-sm disabled:opacity-40"
+          className="text-[12px] font-semibold px-3 py-1.5 rounded-lg surface-sm disabled:opacity-40"
         >
           {tcmMdmLevel ? "Update MDM complexity" : "Log MDM complexity"}
         </button>
@@ -118,7 +118,7 @@ export function ComplianceActions({
           type="button"
           disabled={isPending || tcmMedReconDone}
           onClick={() => startTransition(() => recordTcmMedReconciliation(patientId))}
-          className="text-[12px] font-semibold px-3 py-1.5 rounded-lg glass-sm disabled:opacity-40"
+          className="text-[12px] font-semibold px-3 py-1.5 rounded-lg surface-sm disabled:opacity-40"
         >
           {tcmMedReconDone ? "Med reconciliation logged" : "Log medication reconciliation"}
         </button>
@@ -129,13 +129,13 @@ export function ComplianceActions({
           value={f2fDate}
           onChange={(e) => setF2fDate(e.target.value)}
           disabled={isPending}
-          className="text-[12px] glass-sm rounded-lg px-2 py-1.5"
+          className="text-[12px] surface-sm rounded-lg px-2 py-1.5"
         />
         <button
           type="button"
           disabled={isPending || !f2fDate}
           onClick={() => startTransition(() => scheduleF2F(patientId, f2fDate))}
-          className="text-[12px] font-semibold px-3 py-1.5 rounded-lg glass-sm disabled:opacity-40"
+          className="text-[12px] font-semibold px-3 py-1.5 rounded-lg surface-sm disabled:opacity-40"
         >
           Set F2F visit date
         </button>

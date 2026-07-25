@@ -10,7 +10,7 @@
 - [ ] Two full dress rehearsals of the demo spine: printed copy of `prebuild/letter-1-hf.html` → live parse on `/doctor` → red flag visible on the new patient → Start check-in call → red-flag answer → Alerts panel updates live → "Bring them in" → `/practice`'s captured-billing number moves. Use actual phones/hotspot (not venue wifi) if the ElevenLabs call needs real audio on stage; browser-only call is an acceptable fallback per BLOCK-B if hotspot audio is unreliable.
 - [ ] Tabs pre-opened in order: `/doctor` (clinician console), `/practice` (ROI dashboard), `/patient/[id]` (portal for the demo patient just parsed) — plus a backup video on a second device
 - [ ] Phone/laptop >80% battery, volume up, DND off
-- [ ] DEMO-RUNBOOK.md — does not exist yet as of this rewrite; if there's time before freeze, write the click-by-click order + hotspot details + reset command into one, otherwise rely on this checklist plus the pre-opened tabs
+- [ ] [DEMO-RUNBOOK.md](../DEMO-RUNBOOK.md) — click-by-click order, hotspot details, and reset command are written up there; walk it once before freeze
 - [ ] Eat something — judging runs 12:00–2:00, you may pitch late in the window
 - [ ] 11:40: stop rehearsing. SUBMIT BY 11:50 — ten minutes of buffer, not zero.
 

@@ -149,7 +149,7 @@ export function CheckinCallButton({
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          <div className="glass-strong rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col">
+          <div className="surface-strong rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col">
             <div className="px-5 py-4 border-b border-border flex items-center justify-between">
               <div>
                 <div className="font-heading font-bold text-[15px]">Check-in call &middot; {patientName}</div>
