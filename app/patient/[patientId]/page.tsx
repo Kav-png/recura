@@ -31,7 +31,7 @@ export default async function PatientPortalPage({
       <MedicationsCard medications={medications} />
       <WatchForCard redFlags={redFlags} />
       <WearableSignalsCard events={wearableEvents} />
-      <CheckinHistoryCard checkins={checkins} />
+      <CheckinHistoryCard patientId={patient.id} checkins={checkins} />
       <SelfCheckinForm patientId={patient.id} emergencyNumber={emergencyNumber} />
     </div>
   );

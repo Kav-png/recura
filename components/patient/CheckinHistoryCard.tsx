@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 import { MOOD_META } from "./copy";
 import { Card } from "./Card";
 
@@ -30,8 +34,33 @@ function formatDate(iso: string) {
   return date.toLocaleDateString("en-GB", { weekday: "long", month: "short", day: "numeric" });
 }
 
-export function CheckinHistoryCard({ checkins }: { checkins: Checkin[] }) {
-  const ordered = [...checkins].sort((a, b) => new Date(b.called_at).getTime() - new Date(a.called_at).getTime());
+export function CheckinHistoryCard({ patientId, checkins }: { patientId: string; checkins: Checkin[] }) {
+  const [liveCheckins, setLiveCheckins] = useState(checkins);
+
+  useEffect(() => {
+    setLiveCheckins(checkins);
+  }, [checkins]);
+
+  useEffect(() => {
+    const supabase = supabaseBrowser();
+    const channel = supabase
+      .channel(`checkins:${patientId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "checkins", filter: `patient_id=eq.${patientId}` },
+        (payload) => {
+          const row = payload.new as Checkin;
+          setLiveCheckins((prev) => (prev.some((c) => c.id === row.id) ? prev : [...prev, row]));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [patientId]);
+
+  const ordered = [...liveCheckins].sort((a, b) => new Date(b.called_at).getTime() - new Date(a.called_at).getTime());
 
   return (
     <Card title="Your check-ins" subtitle="How you’ve been feeling, day to day">
