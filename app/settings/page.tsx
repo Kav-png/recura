@@ -1,0 +1,31 @@
+import { Sidebar } from "@/components/doctor/Sidebar";
+import { ReloadDemoDataButton } from "@/components/settings/ReloadDemoDataButton";
+import { logout } from "@/lib/actions";
+
+export default function SettingsPage() {
+  return (
+    <div className="w-full min-h-screen bg-background text-foreground">
+      <Sidebar />
+      <div className="pt-24 lg:pt-10 lg:pl-[124px] p-5 sm:p-8 lg:p-10 max-w-2xl">
+        <div className="font-heading font-extrabold text-xl sm:text-2xl mb-1">Settings</div>
+        <div className="text-sm text-muted mb-6 sm:mb-8">Demo utilities for rehearsing the pitch.</div>
+
+        <div className="bg-surface rounded-2xl border border-border p-5 sm:p-6 mb-5">
+          <div className="font-heading font-bold text-[15px] mb-1.5">Demo data</div>
+          <div className="text-[13px] text-muted mb-4 leading-relaxed">
+            Resets the demo practice to a clean state: 8 HF/COPD patients, medications, red flags, a full check-in
+            history with call transcripts, alerts (some already reviewed, some not), and TCM/RPM billing status.
+            Use this before a run-through if alerts have been marked reviewed during rehearsal.
+          </div>
+          <ReloadDemoDataButton />
+        </div>
+
+        <form action={logout}>
+          <button type="submit" className="text-[13px] font-semibold text-muted hover:text-foreground">
+            Log out
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
