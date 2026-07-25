@@ -424,17 +424,51 @@ function historicalCheckins(patient: PatientSeed) {
 }
 
 export async function reloadDemoData() {
+  if (process.env.DEMO_RESEED_ENABLED !== "true") {
+    throw new Error(
+      "Demo reseed is disabled in this environment. Set DEMO_RESEED_ENABLED=true to allow it."
+    );
+  }
+
   const supabase = supabaseServer();
 
-  // Wipe existing demo data (dependency order)
-  for (const table of ["billing_events", "alerts", "wearable_events", "checkins", "red_flags", "medications", "patients", "clinicians", "practices"] as const) {
-    const { error } = await supabase.from(table).delete().not("id", "is", null);
+  // Wipe only is_demo=true data, scoped explicitly by ID rather than a bare
+  // table-wide delete — RLS enforces this same boundary at the database
+  // level (anon key can only see/touch is_demo=true rows), but a real patient
+  // must never depend on RLS alone to survive a reseed.
+  const { data: demoPractices, error: practicesReadErr } = await supabase
+    .from("practices")
+    .select("id")
+    .eq("is_demo", true);
+  if (practicesReadErr) throw practicesReadErr;
+  const demoPracticeIds = (demoPractices ?? []).map((p) => p.id);
+
+  const { data: demoPatients, error: patientsReadErr } = await supabase
+    .from("patients")
+    .select("id")
+    .eq("is_demo", true);
+  if (patientsReadErr) throw patientsReadErr;
+  const demoPatientIds = (demoPatients ?? []).map((p) => p.id);
+
+  if (demoPatientIds.length > 0) {
+    for (const table of ["billing_events", "alerts", "wearable_events", "checkins", "red_flags", "medications"] as const) {
+      const { error } = await supabase.from(table).delete().in("patient_id", demoPatientIds);
+      if (error) throw error;
+    }
+    const { error } = await supabase.from("patients").delete().in("id", demoPatientIds);
     if (error) throw error;
+  }
+
+  if (demoPracticeIds.length > 0) {
+    const { error: clinErr } = await supabase.from("clinicians").delete().in("practice_id", demoPracticeIds);
+    if (clinErr) throw clinErr;
+    const { error: pracErr } = await supabase.from("practices").delete().in("id", demoPracticeIds);
+    if (pracErr) throw pracErr;
   }
 
   const { data: practice, error: practiceErr } = await supabase
     .from("practices")
-    .insert({ name: PRACTICE_NAME })
+    .insert({ name: PRACTICE_NAME, is_demo: true })
     .select()
     .single();
   if (practiceErr) throw practiceErr;
@@ -464,6 +498,7 @@ export async function reloadDemoData() {
         phone: p.phone,
         discharge_date: daysAgo(p.dischargeDaysAgo),
         condition: p.condition,
+        is_demo: true,
         enrolled_at: hoursAgoIso(p.dischargeDaysAgo * 24),
         tcm_contact_done: p.tcmContactDone,
         tcm_contact_date: p.tcmContactDaysAgo != null ? daysAgo(p.tcmContactDaysAgo) : null,

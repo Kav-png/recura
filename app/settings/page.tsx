@@ -1,8 +1,12 @@
 import { Sidebar } from "@/components/doctor/Sidebar";
 import { ReloadDemoDataButton } from "@/components/settings/ReloadDemoDataButton";
+import { RealPracticePanel } from "@/components/settings/RealPracticePanel";
 import { logout } from "@/lib/actions";
+import { listRealPractices } from "@/lib/patientEnrollment";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const realPractices = await listRealPractices();
+
   return (
     <div className="w-full min-h-screen bg-background text-foreground">
       <Sidebar />
@@ -19,6 +23,8 @@ export default function SettingsPage() {
           </div>
           <ReloadDemoDataButton />
         </div>
+
+        <RealPracticePanel practices={realPractices} />
 
         <form action={logout}>
           <button type="submit" className="text-[13px] font-semibold text-muted hover:text-foreground">
