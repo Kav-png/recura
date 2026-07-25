@@ -18,7 +18,7 @@ export async function getPatientPanel(practiceId: string) {
   const supabase = supabaseServer();
   const { data: patients, error } = await supabase
     .from("patients")
-    .select("*, clinicians(name)")
+    .select("*, clinicians!patients_clinician_id_fkey(name)")
     .eq("practice_id", practiceId)
     .order("name");
   if (error) throw error;
@@ -62,7 +62,13 @@ export async function getPatientDetail(patientId: string) {
   const supabase = supabaseServer();
 
   const [{ data: patient, error: pErr }, meds, flags, checkins, alerts, billing, wearableEvents] = await Promise.all([
-    supabase.from("patients").select("*, clinicians(name, role)").eq("id", patientId).single(),
+    supabase
+      .from("patients")
+      .select(
+        "*, clinicians!patients_clinician_id_fkey(name, role), tcm_clinician:clinicians!patients_tcm_contact_by_fkey(name), rpm_clinician:clinicians!patients_rpm_live_contact_by_fkey(name)"
+      )
+      .eq("id", patientId)
+      .single(),
     supabase.from("medications").select("*").eq("patient_id", patientId).order("name"),
     supabase.from("red_flags").select("*").eq("patient_id", patientId).order("severity", { ascending: false }),
     supabase.from("checkins").select("*").eq("patient_id", patientId).order("called_at", { ascending: true }),
@@ -126,6 +132,17 @@ export async function getUpcomingCheckins(practiceId: string) {
     .filter((s) => s.nextCheckin)
     .sort((a, b) => (a.nextCheckin!.getTime() - b.nextCheckin!.getTime()))
     .slice(0, 6);
+}
+
+export async function getPatientsForPortal(practiceId: string) {
+  const supabase = supabaseServer();
+  const { data, error } = await supabase
+    .from("patients")
+    .select("id, name, condition, discharge_date")
+    .eq("practice_id", practiceId)
+    .order("name");
+  if (error) throw error;
+  return data;
 }
 
 export async function getPracticeOverview(practiceId: string) {

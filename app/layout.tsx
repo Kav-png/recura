@@ -15,8 +15,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Discharge Safety Net — Clinician Dashboard",
-  description: "Post-discharge patient monitoring for physician groups.",
+  title: "Recura — Clinician Dashboard",
+  description: "Recura (Discharge Safety Net) — post-discharge patient monitoring for physician groups.",
 };
 
 export default function RootLayout({

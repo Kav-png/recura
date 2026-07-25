@@ -261,6 +261,7 @@ export type Database = {
         Row: {
           clinician_id: string | null
           condition: string
+          consent_captured_at: string | null
           created_at: string
           discharge_date: string
           enrolled_at: string
@@ -270,12 +271,18 @@ export type Database = {
           phone: string | null
           practice_id: string
           rpm_days_this_period: number
+          rpm_live_contact_at: string | null
+          rpm_live_contact_by: string | null
+          rpm_live_contact_method: string | null
+          tcm_contact_by: string | null
           tcm_contact_date: string | null
           tcm_contact_done: boolean
+          tcm_contact_method: string | null
         }
         Insert: {
           clinician_id?: string | null
           condition: string
+          consent_captured_at?: string | null
           created_at?: string
           discharge_date: string
           enrolled_at?: string
@@ -285,12 +292,18 @@ export type Database = {
           phone?: string | null
           practice_id: string
           rpm_days_this_period?: number
+          rpm_live_contact_at?: string | null
+          rpm_live_contact_by?: string | null
+          rpm_live_contact_method?: string | null
+          tcm_contact_by?: string | null
           tcm_contact_date?: string | null
           tcm_contact_done?: boolean
+          tcm_contact_method?: string | null
         }
         Update: {
           clinician_id?: string | null
           condition?: string
+          consent_captured_at?: string | null
           created_at?: string
           discharge_date?: string
           enrolled_at?: string
@@ -300,13 +313,32 @@ export type Database = {
           phone?: string | null
           practice_id?: string
           rpm_days_this_period?: number
+          rpm_live_contact_at?: string | null
+          rpm_live_contact_by?: string | null
+          rpm_live_contact_method?: string | null
+          tcm_contact_by?: string | null
           tcm_contact_date?: string | null
           tcm_contact_done?: boolean
+          tcm_contact_method?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "patients_clinician_id_fkey"
             columns: ["clinician_id"]
+            isOneToOne: false
+            referencedRelation: "clinicians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patients_rpm_live_contact_by_fkey"
+            columns: ["rpm_live_contact_by"]
+            isOneToOne: false
+            referencedRelation: "clinicians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patients_tcm_contact_by_fkey"
+            columns: ["tcm_contact_by"]
             isOneToOne: false
             referencedRelation: "clinicians"
             referencedColumns: ["id"]

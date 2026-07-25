@@ -9,9 +9,15 @@ type Patient = {
   condition: string;
   tcm_contact_done: boolean;
   tcm_contact_date: string | null;
+  tcm_contact_method: string | null;
   f2f_scheduled_date: string | null;
   rpm_days_this_period: number;
+  rpm_live_contact_at: string | null;
+  rpm_live_contact_method: string | null;
+  consent_captured_at: string | null;
   clinicians: { name: string; role: string } | null;
+  tcm_clinician: { name: string } | null;
+  rpm_clinician: { name: string } | null;
 };
 
 type Medication = { id: string; name: string; dose: string | null; frequency: string | null; status: string; reason: string | null };
@@ -287,6 +293,72 @@ export function PatientDetail({
           ))}
         </div>
       </div>
+
+      {/* Compliance / billing audit trail */}
+      <div className="bg-surface rounded-2xl border border-border p-4 sm:p-5">
+        <div className="font-heading font-bold text-[15px] mb-1">Compliance Log</div>
+        <div className="text-[12px] text-muted mb-3.5">
+          CMS requires the TCM 2-day contact and RPM monthly communication to be made by a qualified clinician,
+          live and synchronous — AI check-in calls satisfy neither requirement on their own.
+        </div>
+        <div className="flex flex-col gap-2.5">
+          <ComplianceRow
+            label="TCM 2-day contact"
+            done={patient.tcm_contact_done}
+            by={patient.tcm_clinician?.name ?? null}
+            method={patient.tcm_contact_method}
+            at={patient.tcm_contact_date}
+          />
+          <ComplianceRow
+            label="RPM live communication"
+            done={!!patient.rpm_live_contact_at}
+            by={patient.rpm_clinician?.name ?? null}
+            method={patient.rpm_live_contact_method}
+            at={patient.rpm_live_contact_at}
+          />
+          <div className="flex items-center justify-between p-3 rounded-xl bg-muted-bg">
+            <div className="text-[13px] font-semibold">Consent captured at enrollment</div>
+            <div className="text-[12px] text-muted">
+              {patient.consent_captured_at ? new Date(patient.consent_captured_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Not on file"}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const METHOD_LABELS: Record<string, string> = {
+  phone_live: "live phone call",
+  video_live: "live video call",
+  in_person: "in person",
+};
+
+function ComplianceRow({
+  label,
+  done,
+  by,
+  method,
+  at,
+}: {
+  label: string;
+  done: boolean;
+  by: string | null;
+  method: string | null;
+  at: string | null;
+}) {
+  return (
+    <div className={`p-3 rounded-xl ${done ? "bg-stable-bg" : "bg-warning-bg"}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[13px] font-semibold">{label}</div>
+        <div className={`text-[11px] font-semibold ${done ? "text-stable" : "text-warning"}`}>{done ? "Complete" : "Pending"}</div>
+      </div>
+      {done && by && (
+        <div className="text-[12px] text-foreground/70 mt-1">
+          By {by} &middot; {method ? METHOD_LABELS[method] ?? method : "method not recorded"}
+          {at ? <> &middot; {new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</> : null}
+        </div>
+      )}
     </div>
   );
 }

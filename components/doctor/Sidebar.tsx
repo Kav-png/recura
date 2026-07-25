@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Building2, Settings } from "lucide-react";
+import { Logo } from "@/components/Logo";
 
 const navItems = [
   { label: "Doctor dashboard", href: "/doctor", icon: LayoutDashboard, match: "/doctor" },
@@ -15,9 +16,7 @@ export function Sidebar() {
 
   return (
     <div className="fixed z-40 top-3 left-3 right-3 lg:right-auto lg:top-4 lg:left-4 lg:w-[88px] bg-sidebar rounded-3xl shadow-lg shadow-black/10 flex flex-row lg:flex-col items-center justify-between lg:justify-start px-4 lg:px-0 py-2.5 lg:py-7 gap-0 lg:gap-8">
-      <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-[10px] lg:rounded-[11px] bg-primary flex items-center justify-center font-heading font-extrabold text-white text-base lg:text-lg shrink-0">
-        DS
-      </div>
+      <Logo className="w-9 h-9 lg:w-10 lg:h-10 rounded-[10px] lg:rounded-[11px] shrink-0" />
       <nav className="flex flex-row lg:flex-col gap-1 lg:gap-1.5 lg:w-full items-center">
         {navItems.map((item) => {
           const active = pathname?.startsWith(item.match);

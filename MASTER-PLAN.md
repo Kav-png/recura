@@ -88,3 +88,9 @@ Grounded in research/06-regulatory-compliance.md and research/07-market-sizing-w
 ## Billing / practice ROI screen — figure discipline (added 2026-07-25)
 
 Per research/02-us-hrrp-penalties-costs.md's explicit rule: **never pitch ROI off the ~$13–15K gross readmission cost** — use the avoidable-cost figure. HF avoidable cost = $2,488; general/COPD (no COPD-specific figure sourced — use the $2,140 general average, do not invent a COPD number) = $2,140. Pair with HRRP penalty exposure (avg ~$217K/hospital, FY2024) and captured TCM/RPM billing ($274–372/episode) — three separate, separately-labeled numbers, not blended into one invented "savings" figure.
+
+## Compliance / audit logging (added 2026-07-25)
+
+research/03-reimbursement-codes.md flags two rules as "product-defining": (1) the TCM 2-day interactive contact must come from a physician/QHP/clinical staff — CMS's MAC guidance explicitly excludes "digital assistants such as chat bots, Siri, or Alexa"; AI cannot make the billable TCM contact. (2) RPM/RTM's "interactive communication" requires real-time synchronous two-way audio — CMS's CY2026 Final Rule declined to bless automated messaging when asked. Both are billing-defense requirements: if audited, the practice needs to show WHO made the qualifying contact, HOW (live phone/video/in-person, never automated), and WHEN.
+
+`patients` gained `tcm_contact_by`/`tcm_contact_method`, `rpm_live_contact_at`/`rpm_live_contact_by`/`rpm_live_contact_method`, and `consent_captured_at` (TCPA — research/06 — consent must be captured at enrollment, revocation honored). The doctor's patient detail page surfaces this as a "Compliance Log" card. Note: adding two more FKs from `patients` to `clinicians` (beyond the existing `clinician_id`) makes any bare `patients.select("*, clinicians(...))")` embed ambiguous in PostgREST — those queries now need explicit `!fk_name` hints (see `lib/queries.ts`).

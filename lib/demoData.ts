@@ -399,6 +399,15 @@ export async function reloadDemoData() {
         tcm_contact_date: p.tcmContactDaysAgo != null ? daysAgo(p.tcmContactDaysAgo) : null,
         f2f_scheduled_date: daysAgo(-p.f2fOffsetDays),
         rpm_days_this_period: p.rpmDays,
+        // Compliance trail: research/03's "product-defining" AI-eligibility rules require the TCM 2-day
+        // contact and the RPM monthly interactive communication to be made by a human clinician via live,
+        // synchronous contact — AI/automated messaging cannot satisfy either billing requirement.
+        consent_captured_at: hoursAgoIso(p.dischargeDaysAgo * 24),
+        tcm_contact_by: p.tcmContactDone ? clinicianIds[p.clinician] : null,
+        tcm_contact_method: p.tcmContactDone ? "phone_live" : null,
+        rpm_live_contact_at: p.rpmDays >= 2 ? hoursAgoIso(24) : null,
+        rpm_live_contact_by: p.rpmDays >= 2 ? clinicianIds[p.clinician] : null,
+        rpm_live_contact_method: p.rpmDays >= 2 ? "phone_live" : null,
       })
       .select()
       .single();
