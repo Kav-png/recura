@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/doctor/Sidebar";
 import { PracticeHeader } from "@/components/practice/PracticeHeader";
 import { RoiOverview } from "@/components/practice/RoiOverview";
@@ -5,13 +6,19 @@ import { ClinicianBreakdown } from "@/components/practice/ClinicianBreakdown";
 import { EnrollmentFunnel } from "@/components/practice/EnrollmentFunnel";
 import { BillingByCode } from "@/components/practice/BillingByCode";
 import { WhyUncaptured } from "@/components/practice/WhyUncaptured";
-import { getDemoClinician, getPracticeOverview } from "@/lib/queries";
+import { getCurrentClinician, getPracticeOverview } from "@/lib/queries";
 import { computeRoiMetrics, computeClinicianBreakdown, computeBillingByCode, computeFunnel } from "@/lib/practiceMetrics";
 
 export const dynamic = "force-dynamic";
 
+// Practice-wide aggregates only make sense computed over every patient in the practice — a
+// non-admin clinician's queries are RLS-scoped to their own patients (see migration
+// add_clinician_auth_and_audit_log), so this page would otherwise silently render a wrong,
+// partial rollup (e.g. every other clinician showing 0 patients) instead of an honest total.
 export default async function PracticePage() {
-  const clinician = await getDemoClinician();
+  const clinician = await getCurrentClinician();
+  if (!clinician.is_admin) redirect("/doctor");
+
   const { practice, clinicians, patients, billing } = await getPracticeOverview(clinician.practice_id);
 
   const roi = computeRoiMetrics(patients, billing);

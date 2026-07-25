@@ -5,8 +5,12 @@ import type { Database } from "@/lib/database.types";
 /**
  * Bypasses RLS — reserved for trusted server-only paths that must touch real
  * (is_demo=false) patient data: enrollment, the ElevenLabs call webhook, and
- * the risk-scoring job. Never import this into anything reachable by the
- * browser or by demo-data code paths.
+ * the risk-scoring job. Never call `.from()`/`.rpc()` on this client from the
+ * browser or from demo-data code paths.
+ *
+ * Exception: `.auth.admin.*` methods (used by lib/clinicianAuth.ts to provision demo clinician
+ * logins) are a GoTrue concern, not a Postgres one, and are unaffected by RLS — calling those
+ * from demo-seeding code does not violate the rule above.
  */
 export function supabaseServiceRole() {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {

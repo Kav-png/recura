@@ -10,6 +10,9 @@ type Patient = {
   phone: string | null;
   discharge_date: string;
   condition: string;
+  resuscitation_status: string | null;
+  emergency_contact_name: string | null;
+  follow_up_clinic: string | null;
   tcm_contact_done: boolean;
   tcm_contact_date: string | null;
   tcm_contact_method: string | null;
@@ -28,6 +31,7 @@ type Patient = {
 
 type Medication = { id: string; name: string; dose: string | null; frequency: string | null; status: string; reason: string | null };
 type RedFlag = { id: string; severity: string; title: string; explanation_plain_english: string; source: string };
+type Allergy = { id: string; allergen: string; reaction: string | null; severity: string | null };
 type Checkin = {
   id: string;
   called_at: string;
@@ -144,6 +148,7 @@ export function PatientDetail({
   patient,
   medications,
   redFlags,
+  allergies,
   checkins,
   alerts,
   billing,
@@ -152,6 +157,7 @@ export function PatientDetail({
   patient: Patient;
   medications: Medication[];
   redFlags: RedFlag[];
+  allergies: Allergy[];
   checkins: Checkin[];
   alerts: Alert[];
   billing: BillingEvent[];
@@ -186,13 +192,43 @@ export function PatientDetail({
               {new Date(patient.discharge_date).toLocaleDateString("en-GB", { month: "short", day: "numeric" })}
               {patient.clinicians ? <> &middot; {patient.clinicians.name}</> : null}
             </div>
+            {(patient.resuscitation_status || patient.emergency_contact_name || patient.follow_up_clinic) && (
+              <div className="text-[12px] sm:text-[12.5px] text-muted mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                {patient.resuscitation_status && (
+                  <span className="font-semibold text-foreground/80">{patient.resuscitation_status}</span>
+                )}
+                {patient.emergency_contact_name && <span>Emergency contact: {patient.emergency_contact_name}</span>}
+                {patient.follow_up_clinic && <span>Follow-up: {patient.follow_up_clinic}</span>}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
           <PatientAlertBar alert={headerAlert} />
-          <CheckinCallButton patientId={patient.id} patientName={patient.name} />
+          <CheckinCallButton patientId={patient.id} patientName={patient.name} patientPhone={patient.phone} />
         </div>
       </div>
+
+      {/* Allergies — safety-critical, shown alongside red flags */}
+      {allergies.length > 0 && (
+        <div className="glass rounded-2xl p-4 sm:p-5">
+          <div className="font-heading font-bold text-[15px] mb-3.5">Allergies &amp; Adverse Reactions</div>
+          <div className="flex flex-col gap-2.5">
+            {allergies.map((a) => (
+              <div key={a.id} className="p-3 rounded-xl bg-warning-bg">
+                <div className="text-[13px] font-bold">{a.allergen}</div>
+                {(a.reaction || a.severity) && (
+                  <div className="text-[12.5px] text-foreground/70 mt-0.5">
+                    {a.reaction}
+                    {a.reaction && a.severity ? " — " : null}
+                    {a.severity}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Red flags — the evidence, front and center under the decision bar */}
       {redFlags.length > 0 && (

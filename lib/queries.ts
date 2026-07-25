@@ -1,21 +1,44 @@
 import "server-only";
 import { supabaseServer } from "@/lib/supabase/server";
+import { logAudit } from "@/lib/audit";
 
-export const DEMO_CLINICIAN_NAME = "Dr. Maria Alvarez";
+/**
+ * The real, logged-in clinician behind the current request (see migration
+ * add_clinician_auth_and_audit_log — clinicians.auth_user_id ties a Supabase Auth user to a
+ * clinicians row). Replaces the old hardcoded-demo-clinician lookup now that /doctor, /practice,
+ * and /settings require a real per-clinician session (proxy.ts).
+ */
+export async function getCurrentClinician() {
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated.");
 
-export async function getDemoClinician() {
-  const supabase = supabaseServer();
   const { data, error } = await supabase
     .from("clinicians")
     .select("*, practices(id, name, country)")
-    .eq("name", DEMO_CLINICIAN_NAME)
+    .eq("auth_user_id", user.id)
     .single();
   if (error) throw error;
   return data;
 }
 
+/**
+ * The demo practice's id, for the patient-picker page only (app/patient/page.tsx) — that page has
+ * no clinician session to resolve (a real patient never logs in as a clinician; see proxy.ts), so
+ * it can't use getCurrentClinician(). Relies on the same anon/is_demo=true RLS policies that gate
+ * the shared demo practice.
+ */
+export async function getDemoPracticeId() {
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.from("practices").select("id").eq("is_demo", true).limit(1).single();
+  if (error) throw error;
+  return data.id;
+}
+
 export async function getPatientPanel(practiceId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const { data: patients, error } = await supabase
     .from("patients")
     .select("*, clinicians!patients_clinician_id_fkey(name)")
@@ -73,9 +96,9 @@ export async function getPatientPanel(practiceId: string) {
 }
 
 export async function getPatientDetail(patientId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
 
-  const [{ data: patient, error: pErr }, meds, flags, checkins, alerts, billing, wearableEvents] = await Promise.all([
+  const [{ data: patient, error: pErr }, meds, flags, allergies, checkins, alerts, billing, wearableEvents] = await Promise.all([
     supabase
       .from("patients")
       .select(
@@ -85,6 +108,7 @@ export async function getPatientDetail(patientId: string) {
       .maybeSingle(),
     supabase.from("medications").select("*").eq("patient_id", patientId).order("name"),
     supabase.from("red_flags").select("*").eq("patient_id", patientId).order("severity", { ascending: false }),
+    supabase.from("allergies").select("*").eq("patient_id", patientId).order("allergen"),
     supabase.from("checkins").select("*").eq("patient_id", patientId).order("called_at", { ascending: true }),
     supabase.from("alerts").select("*").eq("patient_id", patientId).order("sent_at", { ascending: false }),
     supabase.from("billing_events").select("*").eq("patient_id", patientId).order("code"),
@@ -93,10 +117,13 @@ export async function getPatientDetail(patientId: string) {
 
   if (pErr) throw pErr;
 
+  if (patient) await logAudit("view_patient", { patientId });
+
   return {
     patient,
     medications: meds.data ?? [],
     redFlags: flags.data ?? [],
+    allergies: allergies.data ?? [],
     checkins: checkins.data ?? [],
     alerts: alerts.data ?? [],
     billing: billing.data ?? [],
@@ -105,7 +132,7 @@ export async function getPatientDetail(patientId: string) {
 }
 
 export async function getAlertsPanel(practiceId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const { data: patientIds } = await supabase.from("patients").select("id").eq("practice_id", practiceId);
   const ids = (patientIds ?? []).map((p) => p.id);
   if (ids.length === 0) return [];
@@ -121,7 +148,7 @@ export async function getAlertsPanel(practiceId: string) {
 }
 
 export async function getUpcomingCheckins(practiceId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const { data: patients } = await supabase
     .from("patients")
     .select("id, name")
@@ -149,7 +176,7 @@ export async function getUpcomingCheckins(practiceId: string) {
 }
 
 export async function getPatientsForPortal(practiceId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("patients")
     .select("id, name, condition, discharge_date")
@@ -160,7 +187,7 @@ export async function getPatientsForPortal(practiceId: string) {
 }
 
 export async function getBillingDocument(patientId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const [{ data: patient, error: pErr }, { data: billing, error: bErr }] = await Promise.all([
     supabase
       .from("patients")
@@ -175,7 +202,7 @@ export async function getBillingDocument(patientId: string) {
 }
 
 export async function getBillingRun(practiceId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
 
   const [{ data: practice, error: prErr }, { data: patients, error: pErr }] = await Promise.all([
     supabase.from("practices").select("name").eq("id", practiceId).single(),
@@ -198,7 +225,7 @@ export async function getBillingRun(practiceId: string) {
 }
 
 export async function getPracticeOverview(practiceId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
 
   const [{ data: practice, error: prErr }, { data: clinicians, error: clErr }, { data: patients, error: ptErr }] =
     await Promise.all([

@@ -25,12 +25,22 @@ const redFlagSchema = z.object({
   explanation_plain_english: z.string().min(1),
 });
 
+const allergySchema = z.object({
+  allergen: z.string().min(1),
+  reaction: z.string().nullable(),
+  severity: z.string().nullable(),
+});
+
 export const parsedLetterSchema = z.object({
   patient_name: z.string().min(1),
   condition: z.enum(["HF", "COPD", "AMI", "Pneumonia"]),
   discharge_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "discharge_date must be YYYY-MM-DD"),
   medications: z.array(medicationSchema),
   red_flags: z.array(redFlagSchema),
+  allergies: z.array(allergySchema),
+  resuscitation_status: z.string().nullable(),
+  emergency_contact_name: z.string().nullable(),
+  follow_up_clinic: z.string().nullable(),
   plain_english_summary: z.string().min(1),
 });
 
@@ -47,6 +57,10 @@ const SYSTEM_PROMPT = `You extract structured data from a photographed hospital 
   "discharge_date": string in YYYY-MM-DD format,
   "medications": [{ "name": string, "dose": string|null, "frequency": string|null, "status": "new"|"changed"|"stopped"|"unchanged", "reason": string|null }],
   "red_flags": [{ "severity": "info"|"warn"|"danger", "title": string, "explanation_plain_english": string }],
+  "allergies": [{ "allergen": string, "reaction": string|null, "severity": string|null }],
+  "resuscitation_status": string|null,
+  "emergency_contact_name": string|null,
+  "follow_up_clinic": string|null,
   "plain_english_summary": string
 }
 
@@ -54,6 +68,10 @@ Rules:
 - "condition": pick the single closest match to HF (heart failure), COPD, AMI (heart attack), or Pneumonia based on the primary diagnosis in the letter. Always pick one of the four even if the match is imperfect.
 - "medications": include every medication listed on discharge. Read the letter's own annotations (e.g. "NEW", "replaces X", "continue", struck through) to set "status" — default to "unchanged" only when the letter gives no signal either way.
 - "red_flags": 1-3 items, each grounded ONLY in something explicitly stated in the letter (an explicit weight-gain or symptom threshold to watch for, a follow-up test that's still pending, a drug interaction or up-titration risk the letter itself calls out). Do not invent generic warnings that aren't tied to this specific letter's content.
+- "allergies": every allergy/adverse reaction listed in the letter (e.g. an "Allergies and Adverse Reactions" section). Empty array if the letter states none or doesn't mention allergies.
+- "resuscitation_status": the letter's stated resuscitation/advance-decision status verbatim (e.g. "For Resuscitation", "DNACPR") if present, else null. Never infer one that isn't explicitly stated.
+- "emergency_contact_name": the named next-of-kin/emergency contact if the letter lists one, else null.
+- "follow_up_clinic": the outpatient clinic and/or consultant(s) the patient is booked to follow up with, if stated, else null.
 - You never diagnose, prescribe, or reassure about symptoms. You notice and explain in plain language, nothing more.
 - "plain_english_summary" must be 2-3 short sentences a layperson can understand. Do NOT add any pharmacist/GP disclaimer yourself — one is appended automatically after your response.
 - Output raw JSON only — nothing else.`;

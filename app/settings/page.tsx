@@ -2,13 +2,13 @@ import { Sidebar } from "@/components/doctor/Sidebar";
 import { ReloadDemoDataButton } from "@/components/settings/ReloadDemoDataButton";
 import { RealPracticePanel } from "@/components/settings/RealPracticePanel";
 import { CountrySelector } from "@/components/settings/CountrySelector";
-import { logout } from "@/lib/actions";
+import { signOut } from "@/lib/actions";
 import { listRealPractices } from "@/lib/patientEnrollment";
-import { getDemoClinician } from "@/lib/queries";
+import { getCurrentClinician } from "@/lib/queries";
 import { DEFAULT_COUNTRY, isCountryCode } from "@/lib/emergency";
 
 export default async function SettingsPage() {
-  const [realPractices, clinician] = await Promise.all([listRealPractices(), getDemoClinician()]);
+  const [realPractices, clinician] = await Promise.all([listRealPractices(), getCurrentClinician()]);
   const country = clinician.practices?.country;
   const practiceCountry = country && isCountryCode(country) ? country : DEFAULT_COUNTRY;
 
@@ -35,7 +35,7 @@ export default async function SettingsPage() {
 
         <RealPracticePanel practices={realPractices} />
 
-        <form action={logout}>
+        <form action={signOut}>
           <button type="submit" className="text-[13px] font-semibold text-muted hover:text-foreground">
             Log out
           </button>

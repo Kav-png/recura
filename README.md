@@ -57,9 +57,33 @@ A few things worth pointing a judge at directly, since they're the parts that do
 - **A real billing-compliance engine, not a hardcoded number.** [`lib/billing.ts`](lib/billing.ts) derives `billing_events` from CMS TCM/RPM rules: the 2-day contact window is enforced against the *actual* contact date, not just a done/not-done flag; 99495 vs 99496 is selected from documented medical-decision-making complexity; and — because CMS guidance explicitly excludes "digital assistants such as chat bots, Siri, or Alexa" from qualifying contacts — a billing event can only be marked `captured` if it traces to a clinician-logged **live** contact (phone/video/in-person). An AI-run check-in call can flag a patient; it can never itself generate a billable event. Every rate and rule cites its source in [research/03-reimbursement-codes.md](research/03-reimbursement-codes.md).
 - **Structured extraction with a schema, not string-matching on an LLM reply.** [`lib/letterParse.ts`](lib/letterParse.ts) validates the vision model's output against a Zod schema before it ever reaches the database; the system prompt hard-codes safety rails #1 and #3 rather than trusting the model to remember them.
 - **Deterministic, auditable check-in triage.** [`lib/checkinExtraction.ts`](lib/checkinExtraction.ts) is a plain keyword/PROM scorer, not a second LLM call — a clinical escalation path should be traceable to an explicit rule, not a black-box inference, and it's the one place false negatives are least acceptable.
-- **Auth done properly for what it is.** No per-user accounts for a hackathon demo, but the shared access code is still checked with `timingSafeEqual` and the session cookie is HMAC-signed (`lib/auth.ts`), not a plaintext flag.
+- **Real per-clinician auth and access control, not a shared password.** Clinicians sign in with individual Supabase Auth accounts (`clinicians.auth_user_id`); Postgres Row Level Security — not app code — decides which patients a session can read or write, via `SECURITY DEFINER` helpers (`current_clinician_id()`, `current_clinician_is_admin()`). A non-admin clinician's queries are scoped to `clinician_id = current_clinician_id()`; only `clinicians.is_admin = true` sees the whole practice. Tested directly: a non-admin session hitting another clinician's `/doctor/[patientId]` URL gets a 404 at the database layer, not a hidden UI element. See [Access control & audit trail](#access-control--audit-trail) below. The patient portal (`/patient`) is intentionally a *separate* mechanism — a real patient never has a clinician account — still gated by a shared access code (`lib/auth.ts`), checked with `timingSafeEqual` and an HMAC-signed session cookie.
 - **No invented numbers.** Every statistic on the ROI dashboard traces to a sourced file in [research/](research/) with a confidence rating — HF avoidable-readmission cost ($2,488), general/COPD fallback ($2,140), HRRP average penalty (~$217K, FY2024), TCM/RPM capture (~$274–372/episode) — never blended into one invented "savings" figure. See [research/02-us-hrrp-penalties-costs.md](research/02-us-hrrp-penalties-costs.md).
 - **Regulatory-literal wearables layer.** The wearable-signals feature only surfaces discrete, pre-classified events (Apple's cleared hypertension/irregular-rhythm notifications), not raw vitals streams — deliberately, because analyzing raw signal data tips a passive notification feature into FDA SaMD territory. Sourced in [research/06-regulatory-compliance.md](research/06-regulatory-compliance.md).
+
+## Access control & audit trail
+
+Two different actors, two different mechanisms:
+
+| Actor | Routes | Mechanism | Scoping |
+|---|---|---|---|
+| Clinician | `/doctor`, `/practice`, `/settings` | Supabase Auth (email + password) | Postgres RLS: own patients, or all if `is_admin` |
+| Patient | `/patient` | Shared practice access code | Not applicable — a link, not an account |
+
+**Why RLS instead of an app-level `WHERE clinician_id = ...` filter:** an app-level filter only holds if every query remembers to apply it. RLS makes the database itself refuse the row, so a missed filter fails closed instead of leaking data — confirmed above by the 404 test. The demo practice is seeded with one admin (Dr. Alvarez, sees all 10 patients) and one non-admin (Chidinma Obi, NP, sees only her 4 assigned patients) specifically so logging in as each shows a genuinely different, correctly-scoped panel rather than two logins into the same view.
+
+Demo clinician logins (seeded/reset by `lib/clinicianAuth.ts` on every `/settings` → "Reload demo data", password from `DEMO_CLINICIAN_PASSWORD`):
+
+| Email | Role | Admin |
+|---|---|---|
+| `maria.alvarez@demo.recura.health` | Physician | Yes — sees the whole practice |
+| `chidinma.obi@demo.recura.health` | Nurse practitioner | No — sees only her own patients |
+
+Reseeding writes patients under both clinicians' ids, so **run "Reload demo data" while logged in as the admin account** — a non-admin session can't provision rows outside its own scope, by the same RLS that protects real data.
+
+**Audit trail** ([`lib/audit.ts`](lib/audit.ts), `audit_log` table): every patient-detail view and clinical action (alert review, TCM/RPM contact logged, new patient added) is recorded with the real clinician who did it, not the old single hardcoded identity. Logging is best-effort and never blocks the action it describes. A clinician can query their own audit history; only an admin can query everyone's — enforced by the same RLS pattern as patient data.
+
+This is additive to (not a replacement for) the existing TCM/RPM Compliance Log on the patient page, which answers a different question — "was the CMS-required billing contact made" — not "who looked at this chart."
 
 ## Design
 
@@ -75,7 +99,7 @@ Printed discharge letter → live photo parse on stage → red flag surfaces →
 app/              Next.js App Router routes (doctor, practice, patient, settings, login)
 components/       React components, grouped by surface (doctor/ practice/ patient/ settings/)
 lib/              Server-only logic: letter parsing, billing engine, check-in extraction,
-                  emergency-number lookup, Supabase clients, auth
+                  emergency-number lookup, Supabase clients, clinician auth + audit log
 prebuild/         Fixture discharge letters used for the live demo parse
 research/         Every sourced statistic used anywhere in this project, with confidence ratings
 strategy/         The institutional-pivot thesis and business rationale
@@ -101,11 +125,22 @@ SUPABASE_SERVICE_ROLE_KEY=
 ANTHROPIC_API_KEY=
 ELEVENLABS_API_KEY=
 ELEVENLABS_AGENT_ID=
+ELEVENLABS_PHONE_NUMBER_ID=
 ELEVENLABS_WEBHOOK_SECRET=
 ACCESS_CODE=
 SESSION_SECRET=
+DEMO_CLINICIAN_PASSWORD=
+DEMO_RESEED_ENABLED=
 ```
 
-`/login` gates every route behind `ACCESS_CODE` so a shared local link isn't wide open. `/settings` has a "reload demo data" action that reseeds the full demo dataset (patients, meds, red flags, check-in history, alerts, billing) from [`lib/demoData.ts`](lib/demoData.ts) — run it before each rehearsal so reviewed alerts don't carry over.
+`/patient` (the patient portal) is gated behind the shared `ACCESS_CODE`, since a real patient never has an individual account. `/doctor`, `/practice`, and `/settings` require a real clinician login — see [Access control & audit trail](#access-control--audit-trail) for the seeded demo credentials. `/settings` has a "reload demo data" action (log in as the admin account first) that reseeds the full demo dataset (patients, meds, red flags, check-in history, alerts, billing, and both clinicians' auth accounts) from [`lib/demoData.ts`](lib/demoData.ts) — run it before each rehearsal so reviewed alerts don't carry over.
+
+### Real phone calls (optional)
+
+By default check-in calls connect via WebRTC straight from the doctor's browser (`components/doctor/CheckinCallButton.tsx`) — no telephony required. To have the agent actually dial the patient's phone instead:
+
+1. In the ElevenLabs dashboard, under Conversational AI → Phone Numbers, provision a number (this is a real purchase — do it there, not something this repo can do for you) and copy its **Phone Number ID** into `ELEVENLABS_PHONE_NUMBER_ID`.
+2. Under that agent's settings, add a Post-Call Webhook pointing at `https://<your-deployment>/api/call/webhook`, and copy its signing secret into `ELEVENLABS_WEBHOOK_SECRET`.
+3. `POST /api/call/start` with `{ "patientId": "..." }` (session-cookie gated, same as the rest of the app) triggers the real call; the transcript lands in `checkins` via the webhook once the call ends, same extraction/alerting logic as the browser call (`lib/checkinPersist.ts`).
 
 No real patient data exists anywhere in this repo or its demo database — see safety rail #4.

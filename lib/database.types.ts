@@ -98,6 +98,83 @@ export type Database = {
           },
         ]
       }
+      allergies: {
+        Row: {
+          allergen: string
+          created_at: string
+          id: string
+          patient_id: string
+          reaction: string | null
+          severity: string | null
+        }
+        Insert: {
+          allergen: string
+          created_at?: string
+          id?: string
+          patient_id: string
+          reaction?: string | null
+          severity?: string | null
+        }
+        Update: {
+          allergen?: string
+          created_at?: string
+          id?: string
+          patient_id?: string
+          reaction?: string | null
+          severity?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allergies_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_log: {
+        Row: {
+          action: string
+          actor_clinician_id: string | null
+          id: string
+          metadata: Json | null
+          occurred_at: string
+          patient_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_clinician_id?: string | null
+          id?: string
+          metadata?: Json | null
+          occurred_at?: string
+          patient_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_clinician_id?: string | null
+          id?: string
+          metadata?: Json | null
+          occurred_at?: string
+          patient_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_actor_clinician_id_fkey"
+            columns: ["actor_clinician_id"]
+            isOneToOne: false
+            referencedRelation: "clinicians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_log_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_events: {
         Row: {
           amount: number
@@ -185,24 +262,30 @@ export type Database = {
       }
       clinicians: {
         Row: {
+          auth_user_id: string | null
           created_at: string
           id: string
+          is_admin: boolean
           name: string
           practice_id: string
           role: string
           specialty: string | null
         }
         Insert: {
+          auth_user_id?: string | null
           created_at?: string
           id?: string
+          is_admin?: boolean
           name: string
           practice_id: string
           role: string
           specialty?: string | null
         }
         Update: {
+          auth_user_id?: string | null
           created_at?: string
           id?: string
+          is_admin?: boolean
           name?: string
           practice_id?: string
           role?: string
@@ -266,13 +349,16 @@ export type Database = {
           consent_captured_at: string | null
           created_at: string
           discharge_date: string
+          emergency_contact_name: string | null
           enrolled_at: string
           f2f_scheduled_date: string | null
+          follow_up_clinic: string | null
           id: string
           is_demo: boolean
           name: string
           phone: string | null
           practice_id: string
+          resuscitation_status: string | null
           rpm_days_this_period: number
           rpm_live_contact_at: string | null
           rpm_live_contact_by: string | null
@@ -282,8 +368,8 @@ export type Database = {
           tcm_contact_date: string | null
           tcm_contact_done: boolean
           tcm_contact_method: string | null
-          tcm_med_reconciliation_at: string | null
           tcm_mdm_level: string | null
+          tcm_med_reconciliation_at: string | null
         }
         Insert: {
           clinician_id?: string | null
@@ -291,13 +377,16 @@ export type Database = {
           consent_captured_at?: string | null
           created_at?: string
           discharge_date: string
+          emergency_contact_name?: string | null
           enrolled_at?: string
           f2f_scheduled_date?: string | null
+          follow_up_clinic?: string | null
           id?: string
           is_demo?: boolean
           name: string
           phone?: string | null
           practice_id: string
+          resuscitation_status?: string | null
           rpm_days_this_period?: number
           rpm_live_contact_at?: string | null
           rpm_live_contact_by?: string | null
@@ -307,8 +396,8 @@ export type Database = {
           tcm_contact_date?: string | null
           tcm_contact_done?: boolean
           tcm_contact_method?: string | null
-          tcm_med_reconciliation_at?: string | null
           tcm_mdm_level?: string | null
+          tcm_med_reconciliation_at?: string | null
         }
         Update: {
           clinician_id?: string | null
@@ -316,13 +405,16 @@ export type Database = {
           consent_captured_at?: string | null
           created_at?: string
           discharge_date?: string
+          emergency_contact_name?: string | null
           enrolled_at?: string
           f2f_scheduled_date?: string | null
+          follow_up_clinic?: string | null
           id?: string
           is_demo?: boolean
           name?: string
           phone?: string | null
           practice_id?: string
+          resuscitation_status?: string | null
           rpm_days_this_period?: number
           rpm_live_contact_at?: string | null
           rpm_live_contact_by?: string | null
@@ -332,8 +424,8 @@ export type Database = {
           tcm_contact_date?: string | null
           tcm_contact_done?: boolean
           tcm_contact_method?: string | null
-          tcm_med_reconciliation_at?: string | null
           tcm_mdm_level?: string | null
+          tcm_med_reconciliation_at?: string | null
         }
         Relationships: [
           {
@@ -484,7 +576,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      current_clinician_id: { Args: Record<PropertyKey, never>; Returns: string }
+      current_clinician_is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
+      current_clinician_practice_id: { Args: Record<PropertyKey, never>; Returns: string }
     }
     Enums: {
       [_ in never]: never
@@ -611,9 +705,3 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
-
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const

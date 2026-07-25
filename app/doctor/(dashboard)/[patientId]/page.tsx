@@ -8,7 +8,7 @@ export default async function DoctorPatientPage({
   params: Promise<{ patientId: string }>;
 }) {
   const { patientId } = await params;
-  const { patient, medications, redFlags, checkins, alerts, billing, wearableEvents } = await getPatientDetail(patientId);
+  const { patient, medications, redFlags, allergies, checkins, alerts, billing, wearableEvents } = await getPatientDetail(patientId);
 
   if (!patient) notFound();
 
@@ -17,6 +17,7 @@ export default async function DoctorPatientPage({
       patient={patient}
       medications={medications}
       redFlags={redFlags}
+      allergies={allergies}
       checkins={checkins}
       alerts={alerts}
       billing={billing}

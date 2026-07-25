@@ -3,12 +3,12 @@ import { Topbar } from "@/components/doctor/Topbar";
 import { PatientList } from "@/components/doctor/PatientList";
 import { AlertsPanel } from "@/components/doctor/AlertsPanel";
 import { Schedule } from "@/components/doctor/Schedule";
-import { getDemoClinician, getPatientPanel, getAlertsPanel, getUpcomingCheckins } from "@/lib/queries";
+import { getCurrentClinician, getPatientPanel, getAlertsPanel, getUpcomingCheckins } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function DoctorLayout({ children }: { children: React.ReactNode }) {
-  const clinician = await getDemoClinician();
+  const clinician = await getCurrentClinician();
   const practiceId = clinician.practice_id;
 
   const [patients, alerts, schedule] = await Promise.all([

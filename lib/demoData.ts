@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { computeExpectedBilling } from "@/lib/billing";
 import { DEFAULT_COUNTRY, emergencyNumberFor } from "@/lib/emergency";
+import { ensureClinicianAuthUser } from "@/lib/clinicianAuth";
+import { DEMO_ADMIN_EMAIL, DEMO_NP_EMAIL, DEMO_CLINICIAN_PASSWORD } from "@/lib/demoClinicians";
 
 const PRACTICE_NAME = "Riverside Cardiology & Pulmonology Group";
 // Seed transcripts/alert text are static strings baked in at reseed time, matching whatever the
@@ -13,9 +15,20 @@ const SEED_EMERGENCY_NUMBER = emergencyNumberFor(DEFAULT_COUNTRY);
 
 type ClinicianKey = "doc" | "np";
 
-const CLINICIANS: { key: ClinicianKey; name: string; role: "physician" | "nurse"; specialty: string }[] = [
-  { key: "doc", name: "Dr. Maria Alvarez", role: "physician", specialty: "Cardiology & Pulmonology" },
-  { key: "np", name: "Chidinma Obi, NP", role: "nurse", specialty: "Care Coordination" },
+// isAdmin controls RLS visibility (see migration add_clinician_auth_and_audit_log): an admin
+// clinician sees every patient in the practice, a non-admin only their own assigned patients.
+// The demo intentionally seeds one of each so logging in as either shows a different (and
+// correctly scoped) panel — Dr. Alvarez is the practice lead (admin); the NP is not.
+const CLINICIANS: {
+  key: ClinicianKey;
+  name: string;
+  role: "physician" | "nurse";
+  specialty: string;
+  email: string;
+  isAdmin: boolean;
+}[] = [
+  { key: "doc", name: "Dr. Maria Alvarez", role: "physician", specialty: "Cardiology & Pulmonology", email: DEMO_ADMIN_EMAIL, isAdmin: true },
+  { key: "np", name: "Chidinma Obi, NP", role: "nurse", specialty: "Care Coordination", email: DEMO_NP_EMAIL, isAdmin: false },
 ];
 
 type TranscriptLine = { speaker: "agent" | "patient"; text: string };
@@ -493,7 +506,7 @@ export async function reloadDemoData() {
     );
   }
 
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
 
   // Wipe only is_demo=true data, scoped explicitly by ID rather than a bare
   // table-wide delete — RLS enforces this same boundary at the database
@@ -538,9 +551,17 @@ export async function reloadDemoData() {
 
   const clinicianIds: Record<ClinicianKey, string> = { doc: "", np: "" };
   for (const c of CLINICIANS) {
+    const authUserId = await ensureClinicianAuthUser(c.email, DEMO_CLINICIAN_PASSWORD);
     const { data, error } = await supabase
       .from("clinicians")
-      .insert({ practice_id: practice.id, name: c.name, role: c.role, specialty: c.specialty })
+      .insert({
+        practice_id: practice.id,
+        name: c.name,
+        role: c.role,
+        specialty: c.specialty,
+        auth_user_id: authUserId,
+        is_admin: c.isAdmin,
+      })
       .select()
       .single();
     if (error) throw error;

@@ -11,7 +11,7 @@ const VALID_MOODS = new Set(["good", "okay", "tired", "distressed"]);
 // diagnose it. No proms_score, no auto-generated alert — inventing either would break
 // CLAUDE.md's "never diagnoses, prescribes, or reassures about symptoms" rail.
 export async function submitSelfCheckin(patientId: string, mood: string, note: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const safeMood = VALID_MOODS.has(mood) ? mood : "okay";
   const trimmedNote = note.trim();
 

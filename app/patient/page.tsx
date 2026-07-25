@@ -1,4 +1,4 @@
-import { getDemoClinician, getPatientsForPortal } from "@/lib/queries";
+import { getDemoPracticeId, getPatientsForPortal } from "@/lib/queries";
 import { PatientPicker } from "@/components/patient/PatientPicker";
 
 export const dynamic = "force-dynamic";
@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 // a real deployment would skip this screen and send each patient straight to their own
 // /patient/[patientId] from their personal login link.
 export default async function PatientPickerPage() {
-  const clinician = await getDemoClinician();
-  const patients = await getPatientsForPortal(clinician.practice_id);
+  const practiceId = await getDemoPracticeId();
+  const patients = await getPatientsForPortal(practiceId);
 
   return (
     <div className="flex flex-col gap-4">

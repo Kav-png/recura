@@ -4,11 +4,14 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
-import { getDemoClinician } from "@/lib/queries";
+import { getCurrentClinician } from "@/lib/queries";
 import { SESSION_COOKIE, isValidAccessCode, sessionTokenForCode } from "@/lib/auth";
-import { extractCheckin, pickPrimaryMedication, promQuestionFor, type TranscriptLine } from "@/lib/checkinExtraction";
+import { pickPrimaryMedication, promQuestionFor, type TranscriptLine } from "@/lib/checkinExtraction";
 import { computeExpectedBilling } from "@/lib/billing";
 import { emergencyNumberFor, isCountryCode } from "@/lib/emergency";
+import { persistCheckin } from "@/lib/checkinPersist";
+import { logAudit } from "@/lib/audit";
+import { DEMO_ADMIN_EMAIL, DEMO_CLINICIAN_PASSWORD } from "@/lib/demoClinicians";
 
 export type LiveContactMethod = "phone_live" | "video_live" | "in_person";
 export type TcmMdmLevel = "moderate" | "high";
@@ -20,7 +23,7 @@ export type TcmMdmLevel = "moderate" | "high";
  * demo number into something the app actually derives from clinician actions.
  */
 export async function reconcileBillingForPatient(patientId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const { data: patient, error } = await supabase
     .from("patients")
     .select(
@@ -49,8 +52,8 @@ export async function reconcileBillingForPatient(patientId: string) {
 
 /** Logs the TCM 2-day interactive contact — must be a live/synchronous clinician touch (research/03). */
 export async function recordTcmContact(patientId: string, method: LiveContactMethod) {
-  const supabase = supabaseServer();
-  const clinician = await getDemoClinician();
+  const supabase = await supabaseServer();
+  const clinician = await getCurrentClinician();
 
   const { error } = await supabase
     .from("patients")
@@ -63,6 +66,7 @@ export async function recordTcmContact(patientId: string, method: LiveContactMet
     .eq("id", patientId);
   if (error) throw error;
 
+  await logAudit("record_tcm_contact", { patientId, metadata: { method } });
   await reconcileBillingForPatient(patientId);
 }
 
@@ -72,7 +76,7 @@ export async function recordTcmContact(patientId: string, method: LiveContactMet
  * bill until this is on file too.
  */
 export async function recordTcmMedReconciliation(patientId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
 
   const { error } = await supabase
     .from("patients")
@@ -89,7 +93,7 @@ export async function recordTcmMedReconciliation(patientId: string) {
  * been logged yet.
  */
 export async function recordTcmMdmLevel(patientId: string, level: TcmMdmLevel) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
 
   const { error } = await supabase.from("patients").update({ tcm_mdm_level: level }).eq("id", patientId);
   if (error) throw error;
@@ -99,8 +103,8 @@ export async function recordTcmMdmLevel(patientId: string, level: TcmMdmLevel) {
 
 /** Logs the RPM/RTM monthly live interactive communication touch — same live-contact requirement as TCM. */
 export async function recordRpmLiveContact(patientId: string, method: LiveContactMethod, minutes: number) {
-  const supabase = supabaseServer();
-  const clinician = await getDemoClinician();
+  const supabase = await supabaseServer();
+  const clinician = await getCurrentClinician();
 
   const { error } = await supabase
     .from("patients")
@@ -113,12 +117,13 @@ export async function recordRpmLiveContact(patientId: string, method: LiveContac
     .eq("id", patientId);
   if (error) throw error;
 
+  await logAudit("record_rpm_live_contact", { patientId, metadata: { method, minutes } });
   await reconcileBillingForPatient(patientId);
 }
 
 /** Records a day of RPM device data — pure volume/ingestion work, safe to automate (no live-contact requirement). */
 export async function logRpmDeviceDay(patientId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const { data: patient, error: pErr } = await supabase
     .from("patients")
     .select("rpm_days_this_period")
@@ -138,7 +143,7 @@ export async function logRpmDeviceDay(patientId: string) {
 
 export async function scheduleF2F(patientId: string, date: string) {
   if (!date) throw new Error("Date is required.");
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
 
   const { error } = await supabase.from("patients").update({ f2f_scheduled_date: date }).eq("id", patientId);
   if (error) throw error;
@@ -146,35 +151,69 @@ export async function scheduleF2F(patientId: string, date: string) {
   await reconcileBillingForPatient(patientId);
 }
 
+// Patient-portal login only (no clinician account — see proxy.ts). Kept as the shared practice
+// access code since a real patient never has, and shouldn't need, individual credentials.
 export async function submitAccessCode(formData: FormData) {
   const code = String(formData.get("code") ?? "").trim();
-  const next = String(formData.get("next") ?? "/doctor");
+  const next = String(formData.get("next") ?? "/patient");
 
   if (!isValidAccessCode(code)) {
     redirect(`/login?error=1&next=${encodeURIComponent(next)}`);
   }
 
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, sessionTokenForCode(code), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 12,
+  if (next.startsWith("/patient")) {
+    const cookieStore = await cookies();
+    cookieStore.set(SESSION_COOKIE, sessionTokenForCode(code), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 12,
+    });
+    redirect(next.startsWith("/") ? next : "/patient");
+  }
+
+  // Shared demo code, but heading for a clinician-facing route (/doctor, /practice, /settings):
+  // those require a real Supabase Auth session for RLS to scope anything, so the code is a
+  // shortcut into the admin account, not a second auth system. Real clinicians in production would
+  // use their own email/password (still available on the same login page).
+  const supabase = await supabaseServer();
+  const { error } = await supabase.auth.signInWithPassword({
+    email: DEMO_ADMIN_EMAIL,
+    password: DEMO_CLINICIAN_PASSWORD,
   });
+  if (error) {
+    redirect(`/login?error=1&next=${encodeURIComponent(next)}`);
+  }
 
   redirect(next.startsWith("/") ? next : "/doctor");
 }
 
-export async function logout() {
-  const cookieStore = await cookies();
-  cookieStore.delete(SESSION_COOKIE);
+// Clinician login (/doctor, /practice, /settings) — real per-clinician Supabase Auth so RLS can
+// scope patient visibility by clinician_id (see migration add_clinician_auth_and_audit_log).
+export async function signIn(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const next = String(formData.get("next") ?? "/doctor");
+
+  const supabase = await supabaseServer();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    redirect(`/login?error=1&next=${encodeURIComponent(next)}`);
+  }
+
+  redirect(next.startsWith("/") && !next.startsWith("/patient") ? next : "/doctor");
+}
+
+export async function signOut() {
+  const supabase = await supabaseServer();
+  await supabase.auth.signOut();
   redirect("/login");
 }
 
 export async function reviewAlert(alertId: string, action: "call_patient" | "bring_in" | "escalate_911" | "none") {
-  const supabase = supabaseServer();
-  const clinician = await getDemoClinician();
+  const supabase = await supabaseServer();
+  const clinician = await getCurrentClinician();
 
   const { error } = await supabase
     .from("alerts")
@@ -187,11 +226,13 @@ export async function reviewAlert(alertId: string, action: "call_patient" | "bri
 
   if (error) throw error;
 
+  await logAudit("review_alert", { metadata: { alertId, action } });
+
   revalidatePath("/doctor", "layout");
 }
 
 export async function unreviewAlert(alertId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
 
   const { error } = await supabase
     .from("alerts")
@@ -210,8 +251,8 @@ export async function unreviewAlert(alertId: string) {
 export async function setPracticeCountry(country: string) {
   if (!isCountryCode(country)) throw new Error(`Unsupported country code: ${country}`);
 
-  const supabase = supabaseServer();
-  const clinician = await getDemoClinician();
+  const supabase = await supabaseServer();
+  const clinician = await getCurrentClinician();
 
   const { error } = await supabase
     .from("practices")
@@ -237,8 +278,8 @@ export async function addPatient(input: NewPatientInput) {
   if (!name) throw new Error("Patient name is required.");
   if (!input.dischargeDate) throw new Error("Discharge date is required.");
 
-  const supabase = supabaseServer();
-  const clinician = await getDemoClinician();
+  const supabase = await supabaseServer();
+  const clinician = await getCurrentClinician();
   const now = new Date().toISOString();
 
   const { data: patient, error } = await supabase
@@ -258,6 +299,8 @@ export async function addPatient(input: NewPatientInput) {
     .single();
   if (error) throw error;
 
+  await logAudit("add_patient", { patientId: patient.id });
+
   revalidatePath("/doctor", "layout");
   return patient;
 }
@@ -266,7 +309,7 @@ export async function startCheckin(patientId: string) {
   const agentId = process.env.ELEVENLABS_AGENT_ID;
   if (!agentId) throw new Error("ELEVENLABS_AGENT_ID is not configured");
 
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const [{ data: patient, error: pErr }, { data: medications, error: mErr }] = await Promise.all([
     supabase.from("patients").select("name, condition, practices(country)").eq("id", patientId).maybeSingle(),
     supabase.from("medications").select("name, status").eq("patient_id", patientId),
@@ -293,50 +336,8 @@ export async function startCheckin(patientId: string) {
 }
 
 export async function saveCheckin(patientId: string, transcript: TranscriptLine[]) {
-  const supabase = supabaseServer();
-  const [{ data: patient, error: pErr }, { data: medications, error: mErr }] = await Promise.all([
-    supabase
-      .from("patients")
-      .select("condition, clinician_id, practices(country)")
-      .eq("id", patientId)
-      .maybeSingle(),
-    supabase.from("medications").select("name, status").eq("patient_id", patientId),
-  ]);
-  if (pErr) throw pErr;
-  if (mErr) throw mErr;
-  if (!patient) throw new Error("This patient no longer exists — the page may be out of date, try reloading.");
-
-  const medicationName = pickPrimaryMedication(medications ?? []);
-  const emergencyNumber = emergencyNumberFor(patient.practices?.country);
-  const result = extractCheckin({ condition: patient.condition, medicationName, transcript, emergencyNumber });
-
-  const { data: checkin, error: cErr } = await supabase
-    .from("checkins")
-    .insert({
-      patient_id: patientId,
-      called_at: new Date().toISOString(),
-      transcript,
-      summary: result.summary,
-      mood: result.mood,
-      proms_score: result.proms_score,
-      flags_raised: result.flags_raised,
-    })
-    .select()
-    .single();
-  if (cErr) throw cErr;
-
-  if (result.severity && result.alertMessage) {
-    const { error: aErr } = await supabase.from("alerts").insert({
-      patient_id: patientId,
-      checkin_id: checkin.id,
-      severity: result.severity,
-      message: result.alertMessage,
-      clinician_id: patient.clinician_id,
-      sent_at: new Date().toISOString(),
-    });
-    if (aErr) throw aErr;
-  }
-
+  const supabase = await supabaseServer();
+  const result = await persistCheckin(supabase, patientId, transcript);
   revalidatePath("/doctor", "layout");
-  return { checkinId: checkin.id, severity: result.severity };
+  return result;
 }

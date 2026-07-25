@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
-import { getDemoClinician } from "@/lib/queries";
+import { getCurrentClinician } from "@/lib/queries";
 import { parseLetterImage, isSupportedImageType } from "@/lib/letterParse";
 
 export async function POST(request: Request) {
@@ -17,8 +17,8 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const parsed = await parseLetterImage(buffer.toString("base64"), file.type);
 
-    const clinician = await getDemoClinician();
-    const supabase = supabaseServer();
+    const clinician = await getCurrentClinician();
+    const supabase = await supabaseServer();
     const now = new Date().toISOString();
 
     const { data: patient, error: patientError } = await supabase
@@ -29,6 +29,9 @@ export async function POST(request: Request) {
         name: parsed.patient_name,
         condition: parsed.condition,
         discharge_date: parsed.discharge_date,
+        resuscitation_status: parsed.resuscitation_status,
+        emergency_contact_name: parsed.emergency_contact_name,
+        follow_up_clinic: parsed.follow_up_clinic,
         is_demo: true,
         enrolled_at: now,
         consent_captured_at: now,
@@ -62,6 +65,18 @@ export async function POST(request: Request) {
         }))
       );
       if (flagError) throw flagError;
+    }
+
+    if (parsed.allergies.length > 0) {
+      const { error: allergyError } = await supabase.from("allergies").insert(
+        parsed.allergies.map((a) => ({
+          patient_id: patient.id,
+          allergen: a.allergen,
+          reaction: a.reaction,
+          severity: a.severity,
+        }))
+      );
+      if (allergyError) throw allergyError;
     }
 
     return NextResponse.json({ patientId: patient.id, summary: parsed.plain_english_summary });

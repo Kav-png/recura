@@ -10,13 +10,15 @@ The demo spine (updated): printed letter → live photo parse → red flag shown
 
 ## Stack (do not deviate without asking)
 - Next.js (App Router) deployed on Vercel
-- Supabase: Postgres + Realtime subscriptions. No per-user auth for the hackathon (single hardcoded demo practice/clinician) — gated instead by a shared access code (`ACCESS_CODE` env var, cookie set via `proxy.ts`) so the local demo can be shared over a link without being wide open.
+- Supabase: Postgres + Realtime subscriptions.
+- **Clinician auth (`/doctor`, `/practice`, `/settings`): real per-clinician Supabase Auth**, not a shared code. `clinicians.auth_user_id` ties a Supabase Auth user to a clinician row; Postgres RLS (not app code) scopes patient visibility via `SECURITY DEFINER` helpers `current_clinician_id()`/`current_clinician_is_admin()` — a non-admin clinician sees only their own assigned patients, an admin (`clinicians.is_admin`) sees the whole practice. `proxy.ts` validates the session via `@supabase/ssr`. See README's "Access control & audit trail" for seeded demo logins and the `audit_log` table (`lib/audit.ts`).
+- **Patient portal (`/patient`) auth: unchanged** — still the shared access code (`ACCESS_CODE` env var, cookie set via `proxy.ts`, checked with `lib/auth.ts`), since a real patient never has an individual clinician-style account.
 - Anthropic API (claude-sonnet-4-6) for letter parsing (vision + structured JSON out)
 - ElevenLabs Conversational AI for the check-in call
 - All third-party calls happen in Next.js server routes / server actions. NEVER put API keys in client code.
 
 ## Database schema (Supabase)
-See MASTER-PLAN.md's Data model section for the current schema (practices, clinicians, patients, medications, red_flags, checkins, alerts, billing_events). It extends rather than replaces the shape below; alerts route to a clinician_id, not a family phone number.
+See MASTER-PLAN.md's Data model section for the current schema (practices, clinicians, patients, medications, red_flags, checkins, alerts, billing_events). It extends rather than replaces the shape below; alerts route to a clinician_id, not a family phone number. Also extended since: `clinicians.auth_user_id`/`is_admin`, an `allergies` table and `patients.resuscitation_status`/`emergency_contact_name`/`follow_up_clinic` (all parsed from the discharge letter alongside meds/red-flags), and an `audit_log` table (who viewed/actioned what, distinct from the existing TCM/RPM billing-compliance columns on `patients`, which record whether a required contact happened, not who looked at the chart).
 
 ## Safety rails (hard requirements, never relax)
 1. The system NEVER diagnoses, prescribes, or reassures about symptoms. It notices, explains in plain language, and escalates to humans.
