@@ -22,7 +22,7 @@ export async function reconcileBillingForPatient(patientId: string) {
   const { data: patient, error } = await supabase
     .from("patients")
     .select(
-      "discharge_date, tcm_contact_done, tcm_contact_by, tcm_contact_method, f2f_scheduled_date, rpm_days_this_period, rpm_live_contact_at, rpm_live_contact_by, rpm_live_contact_method"
+      "discharge_date, tcm_contact_done, tcm_contact_by, tcm_contact_method, tcm_contact_date, f2f_scheduled_date, rpm_days_this_period, rpm_live_contact_at, rpm_live_contact_by, rpm_live_contact_method"
     )
     .eq("id", patientId)
     .maybeSingle();

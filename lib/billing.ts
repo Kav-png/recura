@@ -27,6 +27,7 @@ export type BillingPatientInput = {
   tcm_contact_done: boolean;
   tcm_contact_by: string | null;
   tcm_contact_method: string | null;
+  tcm_contact_date: string | null;
   f2f_scheduled_date: string | null;
   rpm_days_this_period: number;
   rpm_live_contact_at: string | null;
@@ -55,8 +56,19 @@ export function computeExpectedBilling(patient: BillingPatientInput, now: Date =
   const periodEnd = new Date(dischargeDate.getTime() + 30 * DAY_MS).toISOString().slice(0, 10);
   const daysSinceDischarge = Math.floor((now.getTime() - dischargeDate.getTime()) / DAY_MS);
 
-  // TCM (99495/99496) — once per episode.
-  const tcmLive = patient.tcm_contact_done && !!patient.tcm_contact_by && isLiveContact(patient.tcm_contact_method);
+  // TCM (99495/99496) — once per episode. CMS requires the interactive contact itself to have
+  // happened ≤2 business days post-discharge, not just have been logged eventually — so a live
+  // contact recorded past that window still can't bill (checked via tcm_contact_date, approximated
+  // as calendar days like the pending-window check below).
+  const tcmContactDelay = patient.tcm_contact_date
+    ? Math.floor((new Date(patient.tcm_contact_date).getTime() - dischargeDate.getTime()) / DAY_MS)
+    : null;
+  const tcmLive =
+    patient.tcm_contact_done &&
+    !!patient.tcm_contact_by &&
+    isLiveContact(patient.tcm_contact_method) &&
+    tcmContactDelay !== null &&
+    tcmContactDelay <= 2;
   if (tcmLive) {
     const f2fDays = patient.f2f_scheduled_date
       ? Math.floor((new Date(patient.f2f_scheduled_date).getTime() - dischargeDate.getTime()) / DAY_MS)

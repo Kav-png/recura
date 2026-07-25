@@ -622,6 +622,7 @@ export async function reloadDemoData() {
         tcm_contact_done: p.tcmContactDone,
         tcm_contact_by: p.tcmContactDone ? clinicianIds[p.clinician] : null,
         tcm_contact_method: p.tcmContactDone ? "phone_live" : null,
+        tcm_contact_date: p.tcmContactDaysAgo != null ? daysAgo(p.tcmContactDaysAgo) : null,
         f2f_scheduled_date: daysAgo(-p.f2fOffsetDays),
         rpm_days_this_period: p.rpmDays,
         rpm_live_contact_at: p.rpmDays >= 2 ? hoursAgoIso(24) : null,
