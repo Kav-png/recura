@@ -1,5 +1,6 @@
 import { Bell } from "lucide-react";
 import { SearchBox } from "@/components/doctor/SearchBox";
+import { AddPatientButton } from "@/components/doctor/AddPatientButton";
 
 function initials(name: string) {
   return name
@@ -39,6 +40,7 @@ export function Topbar({
       </div>
       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
         <SearchBox patients={patients} />
+        <AddPatientButton />
         <div className="relative w-10 h-10 lg:w-11 lg:h-11 rounded-xl bg-muted-bg flex items-center justify-center shrink-0">
           <Bell size={18} className="text-foreground/70" />
           {unreadAlertCount > 0 && (
