@@ -36,6 +36,15 @@ yarn-error.log*
 # vercel
 .vercel
 
+# claude code local state (git worktrees, skill installs) — not project source
+.claude/worktrees/
+.claude/skills/
+.agents/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# private strategy/advisor notes — not for public repo
+research/09-meeting-notes-jay-2026-07-22.md
+yc/
