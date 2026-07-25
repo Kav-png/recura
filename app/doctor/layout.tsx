@@ -28,6 +28,7 @@ export default async function DoctorLayout({ children }: { children: React.React
           role={clinician.role}
           specialty={clinician.specialty}
           unreadAlertCount={unreadAlertCount}
+          patients={patients}
         />
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-[300px_1fr_320px] gap-4 sm:gap-5 p-4 sm:p-6 lg:p-8 items-start">
           <div className="lg:sticky lg:top-8">
