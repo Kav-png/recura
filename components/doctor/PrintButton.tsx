@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 export function PrintButton() {
   return (
     <button
@@ -12,14 +14,10 @@ export function PrintButton() {
   );
 }
 
-export function BackButton() {
+export function BackButton({ href }: { href: string }) {
   return (
-    <button
-      type="button"
-      onClick={() => window.history.back()}
-      className="print:hidden text-[13px] font-semibold text-primary hover:underline"
-    >
+    <Link href={href} className="print:hidden text-[13px] font-semibold text-primary hover:underline">
       ← Back
-    </button>
+    </Link>
   );
 }

@@ -9,7 +9,7 @@ export function BillingRun({ doc }: { doc: BillingRunDoc }) {
   return (
     <div className="max-w-4xl mx-auto p-6 sm:p-10 print:p-0 bg-background text-foreground min-h-screen">
       <div className="print:hidden mb-6 flex items-center justify-between">
-        <BackButton />
+        <BackButton href="/practice" />
         <PrintButton />
       </div>
 

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Conversation } from "@elevenlabs/client";
-import { Loader2, Phone, PhoneOff } from "lucide-react";
+import { Loader2, Phone, PhoneOff, Send } from "lucide-react";
 import { startCheckin, saveCheckin } from "@/lib/actions";
 import type { TranscriptLine } from "@/lib/checkinExtraction";
 
@@ -30,8 +30,20 @@ export function CheckinCallButton({
   const [phase, setPhase] = useState<CallPhase>("listening");
   const [micLevel, setMicLevel] = useState(0);
   const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
+  const [pending, setPending] = useState<TranscriptLine | null>(null);
   const [error, setError] = useState<string | null>(null);
   const conversationRef = useRef<Conversation | null>(null);
+  // Mirror transcript/pending in refs so the onDisconnect callback (registered once,
+  // at session start) can always save the *latest* transcript instead of a stale closure.
+  const transcriptRef = useRef<TranscriptLine[]>([]);
+  const pendingRef = useRef<TranscriptLine | null>(null);
+  // Both the manual "End call" click and the SDK's own onDisconnect (agent hangs up on
+  // its own) can trigger the save — this guards against doing it twice for one call.
+  const finishedRef = useRef(false);
+  const hadErrorRef = useRef(false);
+  // Set right before a manual "stop & send" commits `pending` early, so the
+  // eventual authoritative onMessage for that turn doesn't get appended again.
+  const suppressNextAgentMessageRef = useRef(false);
 
   const [realCallStatus, setRealCallStatus] = useState<"idle" | "dialing" | "dialed" | "error">("idle");
   const [realCallError, setRealCallError] = useState<string | null>(null);
@@ -54,9 +66,19 @@ export function CheckinCallButton({
     }
   }
 
+  function pushLine(line: TranscriptLine) {
+    transcriptRef.current = [...transcriptRef.current, line];
+    setTranscript(transcriptRef.current);
+  }
+
   async function handleStart() {
     setError(null);
+    transcriptRef.current = [];
+    pendingRef.current = null;
+    finishedRef.current = false;
+    hadErrorRef.current = false;
     setTranscript([]);
+    setPending(null);
     setStatus("connecting");
     try {
       const { agentId, dynamicVariables } = await startCheckin(patientId);
@@ -69,7 +91,31 @@ export function CheckinCallButton({
           setStatus("connected");
         },
         onMessage: ({ message, role }) => {
-          setTranscript((prev) => [...prev, { speaker: role === "agent" ? "agent" : "patient", text: message }]);
+          const speaker = role === "agent" ? "agent" : "patient";
+          if (speaker === "agent" && suppressNextAgentMessageRef.current) {
+            suppressNextAgentMessageRef.current = false;
+            return;
+          }
+          // Replace the gray, in-progress line with the authoritative final text
+          // rather than appending a second copy of what was just streamed.
+          if (pendingRef.current && pendingRef.current.speaker === speaker) {
+            pendingRef.current = null;
+            setPending(null);
+          }
+          pushLine({ speaker, text: message });
+        },
+        // The streamed text arrives word-by-word as the agent composes/speaks it —
+        // shown in gray italics via `pending` until the final onMessage lands.
+        onAgentChatResponsePart: ({ type, text }) => {
+          if (type === "start") {
+            pendingRef.current = { speaker: "agent", text };
+            setPending(pendingRef.current);
+          } else if (type === "delta") {
+            pendingRef.current = pendingRef.current
+              ? { ...pendingRef.current, text: pendingRef.current.text + text }
+              : { speaker: "agent", text };
+            setPending(pendingRef.current);
+          }
         },
         // The agent SDK reports listening/speaking directly; "thinking" is the gap in between,
         // signaled separately by onAgentTyping once it's done transcribing and started composing.
@@ -78,8 +124,14 @@ export function CheckinCallButton({
           if (is_typing) setPhase("thinking");
         },
         onVadScore: ({ vadScore }) => setMicLevel(vadScore),
-        onDisconnect: () => setStatus((s) => (s === "error" ? s : "idle")),
+        // The agent hanging up on its own (the normal end of a check-in) fires this same
+        // event as a manual "End call" click — both must save, so both go through finishCall.
+        onDisconnect: () => {
+          if (hadErrorRef.current) return;
+          void finishCall();
+        },
         onError: (message) => {
+          hadErrorRef.current = true;
           setError(message);
           setStatus("error");
         },
@@ -91,26 +143,46 @@ export function CheckinCallButton({
     }
   }
 
-  async function handleEnd() {
-    const conversation = conversationRef.current;
-    conversationRef.current = null;
-    if (conversation) await conversation.endSession();
+  function handleCommitPending() {
+    if (!pendingRef.current) return;
+    suppressNextAgentMessageRef.current = true;
+    pushLine(pendingRef.current);
+    pendingRef.current = null;
+    setPending(null);
+  }
 
-    if (transcript.length === 0) {
+  async function finishCall() {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+
+    // Fold in whatever was still streaming (gray/in-progress) when the call ended.
+    const fullTranscript = pendingRef.current ? [...transcriptRef.current, pendingRef.current] : transcriptRef.current;
+    pendingRef.current = null;
+    setPending(null);
+
+    if (fullTranscript.length === 0) {
       setStatus("idle");
       return;
     }
 
     setStatus("saving");
     try {
-      await saveCheckin(patientId, transcript);
+      await saveCheckin(patientId, fullTranscript);
       router.refresh();
       setStatus("idle");
+      transcriptRef.current = [];
       setTranscript([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save the check-in.");
       setStatus("error");
     }
+  }
+
+  async function handleEnd() {
+    const conversation = conversationRef.current;
+    conversationRef.current = null;
+    if (conversation) await conversation.endSession();
+    await finishCall();
   }
 
   const isOpen = status !== "idle";
@@ -194,6 +266,21 @@ export function CheckinCallButton({
                   {line.text}
                 </div>
               ))}
+              {pending && (
+                <div className="flex items-end gap-1.5 max-w-[85%] self-start">
+                  <div className="text-[13px] italic text-muted px-3 py-1.5 rounded-lg bg-muted-bg/60">
+                    {pending.text || "…"}
+                  </div>
+                  <button
+                    onClick={handleCommitPending}
+                    title="Stop streaming and send this line now"
+                    className="flex items-center gap-1 text-[11px] font-semibold text-primary px-2 py-1.5 rounded-md hover:bg-muted-bg shrink-0"
+                  >
+                    <Send size={12} />
+                    Send now
+                  </button>
+                </div>
+              )}
               {error && <div className="text-[12.5px] text-critical mt-2">{error}</div>}
             </div>
 

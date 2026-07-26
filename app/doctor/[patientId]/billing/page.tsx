@@ -19,5 +19,5 @@ export default async function BillingDocumentPage({
     billing,
   });
 
-  return <Superbill doc={doc} />;
+  return <Superbill doc={doc} patientId={patientId} />;
 }

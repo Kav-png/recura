@@ -1,14 +1,14 @@
 import { PrintButton, BackButton } from "@/components/doctor/PrintButton";
 import type { SuperbillDoc } from "@/lib/billingDocument";
 
-export function Superbill({ doc }: { doc: SuperbillDoc }) {
+export function Superbill({ doc, patientId }: { doc: SuperbillDoc; patientId: string }) {
   const dos = new Date(doc.patient.discharge_date).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" });
   const generated = new Date(doc.generatedAt).toLocaleString("en-US");
 
   return (
     <div className="max-w-2xl mx-auto p-6 sm:p-10 print:p-0 bg-background text-foreground min-h-screen">
       <div className="print:hidden mb-6 flex items-center justify-between">
-        <BackButton />
+        <BackButton href={`/doctor/${patientId}`} />
         <PrintButton />
       </div>
 
