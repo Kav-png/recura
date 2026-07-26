@@ -1,6 +1,6 @@
-# Discharge Safety Net
+# Recura
 
-**A discharge letter turns into a daily phone call. A red-flag answer turns into a clinician's alert. A completed call turns into billed revenue.**
+**Discharge Safety Net** — a discharge letter turns into a daily phone call. A red-flag answer turns into a clinician's alert. A completed call turns into billed revenue.**
 
 Built for the Juno Consumer Health Hackathon (institutional pivot). One physician group loses ~$274–372 in TCM/RPM billing per discharge because the 2-day post-discharge contact never happens — not because the care doesn't exist, but because no one calls in time ([research/08-business-model.md](research/08-business-model.md)). This closes that gap: patients get a voice check-in every morning instead of silence until the next appointment; clinicians get a dashboard instead of a stack of unread discharge summaries; the practice gets the billing codes it already qualifies for but usually misses.
 
