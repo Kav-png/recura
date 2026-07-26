@@ -114,7 +114,7 @@ This is additive to (not a replacement for) the existing TCM/RPM Compliance Log 
 
 ## Design
 
-Visual language extracted from a Claude Design mock (`.design-ref/`) — an inpatient ICU monitoring layout reused for its *system* (oklch warm-neutral palette with an amber/terracotta primary, Figtree/Inter type pairing, fixed dark sidebar + 3-column grid), not its literal content, since this product is outpatient/post-discharge, not bedside monitoring. Full breakdown in [MASTER-PLAN.md](MASTER-PLAN.md#design-system). The goal was a dashboard a clinician could believe is real software, not a hackathon demo — dense information, calm color use for severity (not alarm-red everywhere), print-formatted billing documents.
+Visual language extracted from a Claude Design mock (kept locally, not in this repo) — an inpatient ICU monitoring layout reused for its *system* (oklch warm-neutral palette with an amber/terracotta primary, Figtree/Inter type pairing, fixed dark sidebar + 3-column grid), not its literal content, since this product is outpatient/post-discharge, not bedside monitoring. Full breakdown in [MASTER-PLAN.md](MASTER-PLAN.md#design-system). The goal was a dashboard a clinician could believe is real software, not a hackathon demo — dense information, calm color use for severity (not alarm-red everywhere), print-formatted billing documents.
 
 ## Demo spine (~1 minute)
 
@@ -127,11 +127,9 @@ app/              Next.js App Router routes (doctor, practice, patient, settings
 components/       React components, grouped by surface (doctor/ practice/ patient/ settings/)
 lib/              Server-only logic: letter parsing, billing engine, check-in extraction,
                   emergency-number lookup, Supabase clients, clinician auth + audit log
-prebuild/         Fixture discharge letters used for the live demo parse
 research/         Every sourced statistic used anywhere in this project, with confidence ratings
 strategy/         The institutional-pivot thesis and business rationale
 blocks/           Original engineering breakdown by build phase (A–H)
-.design-ref/      Extracted design-mock reference (visual language source, see Design above)
 MASTER-PLAN.md    Canonical current plan — read this first
 CLAUDE.md         Project rules for AI-assisted development on this repo (stack, safety rails, research discipline)
 ```

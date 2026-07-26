@@ -48,3 +48,10 @@ next-env.d.ts
 # private strategy/advisor notes — not for public repo
 research/09-meeting-notes-jay-2026-07-22.md
 yc/
+
+# already-committed reference/demo assets — ignore *future* untracked changes only,
+# so a broad `git add` doesn't sweep up new design-mock/screenshot/fixture files
+.design-ref/
+blocks/
+docs/screenshots/
+prebuild/

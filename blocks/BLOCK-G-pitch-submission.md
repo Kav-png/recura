@@ -21,7 +21,8 @@ Printed letter → live photo parse (`/doctor`'s "New patient → From discharge
 Title + one stat (HF readmission rate or the ~82% TCM under-capture figure) + roadmap. The demo across the three tabs (doctor → practice → patient) is the deck — do not build slides that re-explain a screen the judges are about to see live.
 
 ## Rehearsal checklist
-- 5 full run-throughs aloud, ≥1 to a stranger; timed <3:00 every time; cut words not demo beats.
+- ⚠️ **The scored on-stage demo is capped at 1 minute per the organizers' actual rubric, not 3.** Use `yc/1-min-pitch.md`'s timed-beats table for that portion — it's the same demo spine below, cut to fit. The 3-minute version (submission text / Q&A / investor conversation) is `yc/pitch-panel-review.md`'s Round 4 script and `PLAN.md` §0; don't confuse the two audiences.
+- 5 full run-throughs aloud, ≥1 to a stranger; timed <3:00 every time (long-form version) — plus separately drill the 1-minute cut until it lands at ≤55s; cut words not demo beats.
 - Deliberate silences: after the phone rings, and after the practice dashboard's captured-billing number updates.
 - Pre-flight the live parse before every rehearsal run: `/doctor` → New patient → From discharge letter → the printed copy of `prebuild/letter-1-hf.html`. This calls the real Anthropic API — confirm `ANTHROPIC_API_KEY` is set and the call completes in a reasonable time before trusting it on stage.
 - Q&A rehearsed from `yc/interview-prep.md`'s rapid-fire list: "is this medical advice?" / "why won't Epic/Apple do this?" / "what if the patient doesn't answer?" / "how do you reach families at discharge?" / "who's your first customer?" / "why not a pure billing-automation tool?"
