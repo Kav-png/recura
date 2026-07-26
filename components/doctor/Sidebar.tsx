@@ -23,14 +23,12 @@ export function Sidebar({ clinicianName }: { clinicianName?: string }) {
 
   return (
     <div className="fixed z-40 top-3 left-3 right-3 lg:right-auto lg:top-4 lg:left-4 lg:w-[88px] surface-dark rounded-3xl flex flex-row lg:flex-col items-center justify-between lg:justify-start px-4 lg:px-0 py-2.5 lg:py-7 gap-0 lg:gap-8">
-      <motion.div
-        whileHover={{ scale: 1.08, rotate: 6 }}
-        whileTap={{ scale: 0.92 }}
-        transition={spring}
-        className="shrink-0"
-      >
-        <Logo className="w-9 h-9 lg:w-10 lg:h-10 rounded-[10px] lg:rounded-[11px]" />
-      </motion.div>
+      <Link href="/" aria-label="Home" className="group relative shrink-0">
+        <span className={tooltipClass}>Home</span>
+        <motion.div whileHover={{ scale: 1.08, rotate: 6 }} whileTap={{ scale: 0.92 }} transition={spring}>
+          <Logo className="w-9 h-9 lg:w-10 lg:h-10 rounded-[10px] lg:rounded-[11px]" />
+        </motion.div>
+      </Link>
       <nav className="flex flex-row lg:flex-col gap-1.5 lg:gap-2 lg:w-full items-center">
         {navItems.map((item) => {
           const active = pathname?.startsWith(item.match);

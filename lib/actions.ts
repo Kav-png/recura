@@ -334,6 +334,109 @@ export async function addPatient(input: NewPatientInput) {
   return patient;
 }
 
+/**
+ * Deletes a patient and everything scoped to them (medications, red flags, checkins, alerts,
+ * billing_events, allergies, wearable_events all cascade via FK ON DELETE CASCADE). audit_log
+ * rows referencing the patient survive with patient_id set to NULL, so the audit entry logged
+ * here must be written *before* the delete — it's the only record left of who the patient was.
+ */
+export async function removePatient(patientId: string) {
+  const supabase = await supabaseServer();
+
+  const { data: patient, error: fetchError } = await supabase
+    .from("patients")
+    .select("id, name")
+    .eq("id", patientId)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+  if (!patient) throw new Error("Patient not found.");
+
+  await logAudit("remove_patient", { patientId, metadata: { name: patient.name } });
+
+  const { error } = await supabase.from("patients").delete().eq("id", patientId);
+  if (error) throw error;
+
+  revalidatePath("/doctor", "layout");
+  revalidatePath("/practice", "layout");
+}
+
+export type MedicationInput = {
+  /** Existing medication row id — omit for a medication the clinician is adding. */
+  id?: string;
+  name: string;
+  dose: string | null;
+  frequency: string | null;
+  status: "new" | "changed" | "stopped" | "unchanged";
+  reason: string | null;
+};
+
+export type UpdatePatientInput = {
+  name: string;
+  phone: string;
+  condition: "HF" | "COPD" | "AMI" | "Pneumonia";
+  dischargeDate: string;
+  resuscitationStatus: string | null;
+  emergencyContactName: string | null;
+  followUpClinic: string | null;
+  medications: MedicationInput[];
+  removedMedicationIds: string[];
+};
+
+/**
+ * Manual edit path (distinct from the letter-reconcile path in lib/patientReconcile.ts): a
+ * clinician directly corrects patient details or the medication list. Medications are matched
+ * by id — present-with-id rows are updated in place, id-less rows are inserted, and anything in
+ * removedMedicationIds is deleted. Nothing is ever wiped implicitly.
+ */
+export async function updatePatient(patientId: string, input: UpdatePatientInput) {
+  const name = input.name.trim();
+  if (!name) throw new Error("Patient name is required.");
+  if (!input.dischargeDate) throw new Error("Discharge date is required.");
+
+  const supabase = await supabaseServer();
+
+  const { error: patientError } = await supabase
+    .from("patients")
+    .update({
+      name,
+      phone: input.phone.trim() || null,
+      condition: input.condition,
+      discharge_date: input.dischargeDate,
+      resuscitation_status: input.resuscitationStatus?.trim() || null,
+      emergency_contact_name: input.emergencyContactName?.trim() || null,
+      follow_up_clinic: input.followUpClinic?.trim() || null,
+    })
+    .eq("id", patientId);
+  if (patientError) throw patientError;
+
+  for (const id of input.removedMedicationIds) {
+    const { error } = await supabase.from("medications").delete().eq("id", id).eq("patient_id", patientId);
+    if (error) throw error;
+  }
+
+  for (const m of input.medications) {
+    const medName = m.name.trim();
+    if (!medName) continue;
+    if (m.id) {
+      const { error } = await supabase
+        .from("medications")
+        .update({ name: medName, dose: m.dose, frequency: m.frequency, status: m.status, reason: m.reason })
+        .eq("id", m.id)
+        .eq("patient_id", patientId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from("medications")
+        .insert({ patient_id: patientId, name: medName, dose: m.dose, frequency: m.frequency, status: m.status, reason: m.reason });
+      if (error) throw error;
+    }
+  }
+
+  await logAudit("edit_patient", { patientId });
+
+  revalidatePath("/doctor", "layout");
+}
+
 export async function startCheckin(patientId: string) {
   const agentId = process.env.ELEVENLABS_AGENT_ID;
   if (!agentId) throw new Error("ELEVENLABS_AGENT_ID is not configured");

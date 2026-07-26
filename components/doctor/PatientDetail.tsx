@@ -1,8 +1,11 @@
 import { severityMeta, daysSince, timeAgo, type Severity } from "@/lib/status";
 import { CheckinCallButton } from "@/components/doctor/CheckinCallButton";
+import { RemovePatientButton } from "@/components/doctor/RemovePatientButton";
+import { EditPatientButton } from "@/components/doctor/EditPatientButton";
 import { ComplianceActions } from "@/components/doctor/ComplianceActions";
 import { PatientAlertBar } from "@/components/doctor/PatientAlertBar";
 import { WEARABLE_EVENT_LABELS, WEARABLE_SEVERITY_COLOR } from "@/lib/wearableEvents";
+import { TrendChart } from "@/components/doctor/TrendChart";
 
 type Patient = {
   id: string;
@@ -70,80 +73,6 @@ const medStatusColor: Record<string, string> = {
   stopped: "bg-critical",
   unchanged: "bg-stable",
 };
-
-// Plots PROMs alongside discrete wearable notifications on one real (day-since-discharge)
-// timeline, so the clinician can see whether device signals and symptom trend move together —
-// per MASTER-PLAN.md, markers are discrete pre-classified events, never a continuous HR/HRV/BP
-// waveform.
-function TrendChart({
-  checkins,
-  wearableEvents,
-  dischargeDate,
-}: {
-  checkins: Checkin[];
-  wearableEvents: WearableEvent[];
-  dischargeDate: string;
-}) {
-  const scored = [...checkins]
-    .filter((c) => c.proms_score != null)
-    .sort((a, b) => new Date(a.called_at).getTime() - new Date(b.called_at).getTime());
-  if (scored.length < 2 && wearableEvents.length === 0) return null;
-
-  const w = 720;
-  const h = 180;
-  const pad = 14;
-  const max = 100;
-
-  const dischargeMs = new Date(dischargeDate).getTime();
-  const totalDays = Math.max(1, daysSince(dischargeDate));
-  const dayOffset = (iso: string) => (new Date(iso).getTime() - dischargeMs) / 86400000;
-  const xForDay = (day: number) => pad + (Math.min(Math.max(day, 0), totalDays) / totalDays) * (w - pad * 2);
-
-  const promsPoints = scored.map((c) => ({
-    x: xForDay(dayOffset(c.called_at)),
-    y: h - pad - ((c.proms_score! / max) * (h - pad * 2)),
-    checkin: c,
-  }));
-  const polyline = promsPoints.map((p) => `${p.x},${p.y}`).join(" ");
-  const last = scored[scored.length - 1];
-
-  return (
-    <div className="surface rounded-2xl p-4 sm:p-5">
-      <div className="flex items-center justify-between mb-3.5">
-        <div className="font-heading font-bold text-[15px]">PROMs &amp; Wearable Signals &middot; Since Discharge</div>
-        <div className="text-xs text-muted hidden sm:block">Line = PROMs (lower = more symptomatic) &middot; dots = device notifications</div>
-      </div>
-      <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} className="block">
-        <line x1="0" y1={h * 0.25} x2={w} y2={h * 0.25} stroke="var(--border)" strokeWidth="1" />
-        <line x1="0" y1={h * 0.5} x2={w} y2={h * 0.5} stroke="var(--border)" strokeWidth="1" />
-        <line x1="0" y1={h * 0.75} x2={w} y2={h * 0.75} stroke="var(--border)" strokeWidth="1" />
-        {promsPoints.length > 1 && (
-          <polyline points={polyline} fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        )}
-        {promsPoints.map((p, i) => (
-          <circle key={p.checkin.id} cx={p.x} cy={p.y} r={i === promsPoints.length - 1 ? 5 : 3.5} fill="var(--primary)">
-            <title>{`Check-in ${timeAgo(p.checkin.called_at)} — PROMs ${p.checkin.proms_score}`}</title>
-          </circle>
-        ))}
-        {wearableEvents.map((we) => {
-          const x = xForDay(dayOffset(we.detected_at));
-          const color = WEARABLE_SEVERITY_COLOR[we.severity] ?? "var(--muted)";
-          return (
-            <g key={we.id}>
-              <line x1={x} y1={pad} x2={x} y2={h - pad} stroke={color} strokeWidth="1.5" strokeDasharray="3 3" opacity="0.5" />
-              <circle cx={x} cy={pad + 5} r="4.5" fill={color}>
-                <title>{`${WEARABLE_EVENT_LABELS[we.event_type] ?? we.event_type} — ${timeAgo(we.detected_at)}`}</title>
-              </circle>
-            </g>
-          );
-        })}
-      </svg>
-      <div className="text-xs text-muted mt-1">
-        {last ? <>Latest PROMs: {last.proms_score} on {timeAgo(last.called_at)}</> : "No PROMs check-ins yet."}
-      </div>
-    </div>
-  );
-}
 
 export function PatientDetail({
   patient,
@@ -216,6 +145,8 @@ export function PatientDetail({
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
           <PatientAlertBar alert={headerAlert} />
           <CheckinCallButton patientId={patient.id} patientName={patient.name} patientPhone={patient.phone} />
+          <EditPatientButton patient={patient} medications={medications} />
+          <RemovePatientButton patientId={patient.id} patientName={patient.name} />
         </div>
       </div>
 

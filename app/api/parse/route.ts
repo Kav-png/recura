@@ -1,26 +1,36 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getCurrentClinician } from "@/lib/queries";
-import { parseLetterImage, isSupportedImageType } from "@/lib/letterParse";
+import { parseLetterImage, isSupportedLetterType } from "@/lib/letterParse";
 import { generatePatientAccessCode } from "@/lib/patientAccessCode";
 import { findAllergyMedicationConflicts, buildAllergyConflictRedFlags } from "@/lib/allergyCheck";
+import { reconcileParsedLetterWithPatient } from "@/lib/patientReconcile";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get("image");
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: "No image was uploaded." }, { status: 400 });
+      return NextResponse.json({ error: "No file was uploaded." }, { status: 400 });
     }
-    if (!isSupportedImageType(file.type)) {
-      return NextResponse.json({ error: `Unsupported image type "${file.type}" — use JPEG, PNG, GIF, or WEBP.` }, { status: 400 });
+    if (!isSupportedLetterType(file.type)) {
+      return NextResponse.json({ error: `Unsupported file type "${file.type}" — use JPEG, PNG, GIF, WEBP, or PDF.` }, { status: 400 });
     }
+    const existingPatientId = formData.get("patientId");
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const parsed = await parseLetterImage(buffer.toString("base64"), file.type);
 
-    const clinician = await getCurrentClinician();
     const supabase = await supabaseServer();
+
+    if (typeof existingPatientId === "string" && existingPatientId) {
+      await reconcileParsedLetterWithPatient(supabase, existingPatientId, parsed);
+      await logAudit("update_patient_from_letter", { patientId: existingPatientId });
+      return NextResponse.json({ patientId: existingPatientId, summary: parsed.plain_english_summary });
+    }
+
+    const clinician = await getCurrentClinician();
     const now = new Date().toISOString();
 
     const { data: patient, error: patientError } = await supabase

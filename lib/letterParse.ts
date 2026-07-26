@@ -5,8 +5,21 @@ import { z } from "zod";
 export const SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
 type SupportedImageType = (typeof SUPPORTED_IMAGE_TYPES)[number];
 
+export const SUPPORTED_DOCUMENT_TYPES = ["application/pdf"] as const;
+type SupportedDocumentType = (typeof SUPPORTED_DOCUMENT_TYPES)[number];
+
+export type SupportedLetterType = SupportedImageType | SupportedDocumentType;
+
 export function isSupportedImageType(mimeType: string): mimeType is SupportedImageType {
   return (SUPPORTED_IMAGE_TYPES as readonly string[]).includes(mimeType);
+}
+
+export function isSupportedDocumentType(mimeType: string): mimeType is SupportedDocumentType {
+  return (SUPPORTED_DOCUMENT_TYPES as readonly string[]).includes(mimeType);
+}
+
+export function isSupportedLetterType(mimeType: string): mimeType is SupportedLetterType {
+  return isSupportedImageType(mimeType) || isSupportedDocumentType(mimeType);
 }
 
 const REQUIRED_SUMMARY_SUFFIX = "check with your pharmacist or GP";
@@ -91,7 +104,11 @@ function enforceSummarySuffix(summary: string): string {
   return `${withoutSuffix} — ${REQUIRED_SUMMARY_SUFFIX}.`;
 }
 
-async function callClaude(anthropic: Anthropic, imageBase64: string, mediaType: SupportedImageType, retryNote?: string) {
+async function callClaude(anthropic: Anthropic, imageBase64: string, mediaType: SupportedLetterType, retryNote?: string) {
+  const sourceBlock = isSupportedDocumentType(mediaType)
+    ? ({ type: "document", source: { type: "base64", media_type: mediaType, data: imageBase64 } } as const)
+    : ({ type: "image", source: { type: "base64", media_type: mediaType, data: imageBase64 } } as const);
+
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 2048,
@@ -100,10 +117,10 @@ async function callClaude(anthropic: Anthropic, imageBase64: string, mediaType: 
       {
         role: "user",
         content: [
-          { type: "image", source: { type: "base64", media_type: mediaType, data: imageBase64 } },
+          sourceBlock,
           {
             type: "text",
-            text: retryNote ?? "Extract the structured JSON described in the system prompt from this discharge letter photo.",
+            text: retryNote ?? "Extract the structured JSON described in the system prompt from this discharge letter.",
           },
         ],
       },
@@ -115,12 +132,12 @@ async function callClaude(anthropic: Anthropic, imageBase64: string, mediaType: 
 }
 
 /**
- * Photo of a discharge letter -> validated structured JSON. Retries once with the validation
- * error fed back to the model if the first response doesn't parse (Block A spec).
+ * Photo or PDF of a discharge letter -> validated structured JSON. Retries once with the
+ * validation error fed back to the model if the first response doesn't parse (Block A spec).
  */
 export async function parseLetterImage(imageBase64: string, mediaType: string): Promise<ParsedLetter> {
-  if (!isSupportedImageType(mediaType)) {
-    throw new Error(`Unsupported image type "${mediaType}" — use JPEG, PNG, GIF, or WEBP.`);
+  if (!isSupportedLetterType(mediaType)) {
+    throw new Error(`Unsupported file type "${mediaType}" — use JPEG, PNG, GIF, WEBP, or PDF.`);
   }
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY is not configured — letter parsing is unavailable until it's set.");

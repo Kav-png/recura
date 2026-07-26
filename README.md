@@ -39,6 +39,30 @@ Full schema and product rationale: [MASTER-PLAN.md](MASTER-PLAN.md) (canonical p
 
 Next.js 16 (App Router) on Vercel · Supabase (Postgres + Realtime) · Anthropic API (`claude-sonnet-4-6`, vision + structured JSON) · ElevenLabs Conversational AI · Tailwind v4. All third-party calls run server-side only (`server-only` package enforces this at the type level) — no API key ever reaches client code.
 
+## Screenshots
+
+Real screens against the seeded demo dataset (Riverside Cardiology & Pulmonology Group — fictional, see safety rail #4), logged in as `maria.alvarez@demo.recura.health`.
+
+**Doctor dashboard** — the surface a clinician actually lives in. Left: their patient panel (`10 active`, scoped by RLS to whichever clinician is logged in). Center: Daniel Osei's chart — TCM 2-day contact status, RPM reporting days, and a PROMs/wearable-signal trend line, all pulled live rather than hardcoded. Right: the alert queue, color-coded by severity, each traceable to a specific check-in or wearable event and showing who reviewed it and what action they took.
+
+![Doctor dashboard: patient panel, chart, and alert queue](docs/screenshots/doctor-dashboard.png)
+
+**Practice ROI dashboard** (`/practice`) — the number a physician group actually cares about. Billing captured vs. pending, readmissions/cost avoided (explicitly labeled "illustrative," never blended with the real captured-billing figure), and HRRP penalty exposure as context, not a claimed reduction. Every figure here traces to a sourced file in [research/](research/) — see the [Research library](research/README.md) index and confidence key.
+
+![Practice ROI dashboard: billing captured, cost avoided, enrollment funnel](docs/screenshots/practice-roi.png)
+
+**Billing run, print view** — the output of the actual compliance engine ([`lib/billing.ts`](lib/billing.ts)), not a mocked total. Per patient, per CPT code (99495 vs. 99496 selected from documented medical-decision-making complexity, 99445/99454/99457 for RPM), with the diagnosis code and charge — the kind of document billing staff would actually submit.
+
+![Billing run print view with CPT codes, diagnosis codes, and charges per patient](docs/screenshots/billing-run.png)
+
+**Patient portal** (`/patient/[id]`) — what the patient sees, locked to their own chart via their individual access code. Plain-English medication list and check-in history, in keeping with safety rail #3 ("check with your pharmacist or GP" on every explanation) — no clinical jargon, no dosing advice.
+
+![Patient portal: plain-English medications and check-in history](docs/screenshots/patient-portal.png)
+
+**Settings — practice region** — the control behind safety rail #2. The emergency number quoted in a severe-symptom alert (`"call 911 now"` vs. `999`, `112`, etc.) is looked up from here ([`lib/emergency.ts`](lib/emergency.ts)), not hardcoded to one country, because this is not a single-country product. This screen also holds the "reload demo data" action referenced throughout this README.
+
+![Settings page: practice-region emergency number selector and demo data reset](docs/screenshots/settings-emergency-region.png)
+
 ## Safety rails
 
 These are hard requirements, not defaults to be tuned later — see [CLAUDE.md](CLAUDE.md):
@@ -55,8 +79,8 @@ These are hard requirements, not defaults to be tuned later — see [CLAUDE.md](
 A few things worth pointing a judge at directly, since they're the parts that don't show up in a screen recording:
 
 - **A real billing-compliance engine, not a hardcoded number.** [`lib/billing.ts`](lib/billing.ts) derives `billing_events` from CMS TCM/RPM rules: the 2-day contact window is enforced against the *actual* contact date, not just a done/not-done flag; 99495 vs 99496 is selected from documented medical-decision-making complexity; and — because CMS guidance explicitly excludes "digital assistants such as chat bots, Siri, or Alexa" from qualifying contacts — a billing event can only be marked `captured` if it traces to a clinician-logged **live** contact (phone/video/in-person). An AI-run check-in call can flag a patient; it can never itself generate a billable event. Every rate and rule cites its source in [research/03-reimbursement-codes.md](research/03-reimbursement-codes.md).
-- **Structured extraction with a schema, not string-matching on an LLM reply.** [`lib/letterParse.ts`](lib/letterParse.ts) validates the vision model's output against a Zod schema before it ever reaches the database; the system prompt hard-codes safety rails #1 and #3 rather than trusting the model to remember them.
-- **Deterministic, auditable check-in triage.** [`lib/checkinExtraction.ts`](lib/checkinExtraction.ts) is a plain keyword/PROM scorer, not a second LLM call — a clinical escalation path should be traceable to an explicit rule, not a black-box inference, and it's the one place false negatives are least acceptable.
+- **ML is scoped to one job: reading the letter, not deciding what matters.** The only model in the whole escalation path is the vision call in [`lib/letterParse.ts`](lib/letterParse.ts) (`claude-sonnet-4-6`), turning a photographed discharge letter into structured meds/changes/red-flags — and even there its output is validated against a Zod schema before it ever reaches the database, and the system prompt hard-codes safety rails #1 and #3 rather than trusting the model to remember them. That's a deliberate boundary, not an oversight: ML converts unstructured input (a photo) into structured data; it never gets to be the thing deciding whether a patient is at risk.
+- **Deterministic, auditable check-in triage — no ML here on purpose.** [`lib/checkinExtraction.ts`](lib/checkinExtraction.ts) is a plain keyword/PROM scorer, not a second model call. A clinical escalation path should be traceable to an explicit rule a clinician can read and challenge, not a black-box inference — this is the one place in the system where false negatives are least acceptable, so it's the one place ML is deliberately kept out.
 - **Real per-clinician auth and access control, not a shared password.** Clinicians sign in with individual Supabase Auth accounts (`clinicians.auth_user_id`); Postgres Row Level Security — not app code — decides which patients a session can read or write, via `SECURITY DEFINER` helpers (`current_clinician_id()`, `current_clinician_is_admin()`). A non-admin clinician's queries are scoped to `clinician_id = current_clinician_id()`; only `clinicians.is_admin = true` sees the whole practice. Tested directly: a non-admin session hitting another clinician's `/doctor/[patientId]` URL gets a 404 at the database layer, not a hidden UI element. See [Access control & audit trail](#access-control--audit-trail) below. The patient portal (`/patient`) is intentionally a *separate* mechanism — a real patient never has a clinician account — still gated by a shared access code (`lib/auth.ts`), checked with `timingSafeEqual` and an HMAC-signed session cookie.
 - **No invented numbers.** Every statistic on the ROI dashboard traces to a sourced file in [research/](research/) with a confidence rating — HF avoidable-readmission cost ($2,488), general/COPD fallback ($2,140), HRRP average penalty (~$217K, FY2024), TCM/RPM capture (~$274–372/episode) — never blended into one invented "savings" figure. See [research/02-us-hrrp-penalties-costs.md](research/02-us-hrrp-penalties-costs.md).
 - **Regulatory-literal wearables layer.** The wearable-signals feature only surfaces discrete, pre-classified events (Apple's cleared hypertension/irregular-rhythm notifications), not raw vitals streams — deliberately, because analyzing raw signal data tips a passive notification feature into FDA SaMD territory. Sourced in [research/06-regulatory-compliance.md](research/06-regulatory-compliance.md).
