@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getCurrentClinician } from "@/lib/queries";
 import { SESSION_COOKIE, isValidAccessCode, sessionTokenForCode, PATIENT_SESSION_COOKIE, patientSessionCookieValue } from "@/lib/auth";
@@ -67,7 +68,7 @@ export async function recordTcmContact(patientId: string, method: LiveContactMet
     .eq("id", patientId);
   if (error) throw error;
 
-  await logAudit("record_tcm_contact", { patientId, metadata: { method } });
+  after(() => logAudit("record_tcm_contact", { patientId, metadata: { method } }));
   await reconcileBillingForPatient(patientId);
 }
 
@@ -118,7 +119,7 @@ export async function recordRpmLiveContact(patientId: string, method: LiveContac
     .eq("id", patientId);
   if (error) throw error;
 
-  await logAudit("record_rpm_live_contact", { patientId, metadata: { method, minutes } });
+  after(() => logAudit("record_rpm_live_contact", { patientId, metadata: { method, minutes } }));
   await reconcileBillingForPatient(patientId);
 }
 
@@ -253,7 +254,7 @@ export async function reviewAlert(alertId: string, action: "call_patient" | "bri
 
   if (error) throw error;
 
-  await logAudit("review_alert", { metadata: { alertId, action } });
+  after(() => logAudit("review_alert", { metadata: { alertId, action } }));
 
   revalidatePath("/doctor", "layout");
 }
@@ -327,7 +328,7 @@ export async function addPatient(input: NewPatientInput) {
     .single();
   if (error) throw error;
 
-  await logAudit("add_patient", { patientId: patient.id });
+  after(() => logAudit("add_patient", { patientId: patient.id }));
 
   revalidatePath("/doctor", "layout");
   return patient;

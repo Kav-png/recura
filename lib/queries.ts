@@ -1,4 +1,5 @@
 import "server-only";
+import { after } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
 
@@ -39,23 +40,20 @@ export async function getDemoPracticeId() {
 
 export async function getPatientPanel(practiceId: string) {
   const supabase = await supabaseServer();
-  const { data: patients, error } = await supabase
-    .from("patients")
-    .select("*, clinicians!patients_clinician_id_fkey(name)")
-    .eq("practice_id", practiceId)
-    .order("name");
+  const [{ data: patients, error }, { data: checkins }, { data: alerts }] = await Promise.all([
+    supabase
+      .from("patients")
+      .select("*, clinicians!patients_clinician_id_fkey(name)")
+      .eq("practice_id", practiceId)
+      .order("name"),
+    supabase.from("checkins").select("patient_id, called_at, proms_score").order("called_at", { ascending: false }),
+    supabase
+      .from("alerts")
+      .select("patient_id, severity, reviewed_at")
+      .is("reviewed_at", null)
+      .order("sent_at", { ascending: false }),
+  ]);
   if (error) throw error;
-
-  const { data: checkins } = await supabase
-    .from("checkins")
-    .select("patient_id, called_at, proms_score")
-    .order("called_at", { ascending: false });
-
-  const { data: alerts } = await supabase
-    .from("alerts")
-    .select("patient_id, severity, reviewed_at")
-    .is("reviewed_at", null)
-    .order("sent_at", { ascending: false });
 
   const patientIds = patients.map((p) => p.id);
   const { data: billing } = patientIds.length
@@ -117,7 +115,9 @@ export async function getPatientDetail(patientId: string) {
 
   if (pErr) throw pErr;
 
-  if (patient) await logAudit("view_patient", { patientId });
+  // Fire-and-forget: the audit trail must never add latency to a page view (see lib/audit.ts's
+  // "never blocks the action it's describing"); after() keeps it running past the response.
+  if (patient) after(() => logAudit("view_patient", { patientId }));
 
   return {
     patient,
