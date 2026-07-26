@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Recura — outro</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600..700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-black: oklch(8% 0.01 45);
+    --bg-dark: oklch(15% 0.014 45);
+    --bg-dark-2: oklch(19% 0.02 45);
+    --foreground: oklch(96% 0.006 70);
+    --muted: oklch(68% 0.02 60);
+    --primary: oklch(64% 0.15 35);
+    --primary-bright: oklch(74% 0.16 40);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: var(--bg-black);
+    font-family: 'Inter', sans-serif;
+  }
+
+  .stage {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(ellipse 900px 700px at 50% 46%, var(--bg-dark-2), transparent 70%),
+      radial-gradient(ellipse 1800px 1200px at 50% 50%, var(--bg-dark), var(--bg-black) 75%);
+    animation: stage-out 0.75s cubic-bezier(0.6, 0, 1, 1) forwards;
+    animation-delay: 3.15s;
+  }
+
+  /* vignette */
+  .vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 1400px 900px at 50% 50%, transparent 45%, oklch(0% 0 0 / 0.55) 100%);
+    pointer-events: none;
+  }
+
+  /* ambient glow blobs behind the mark */
+  .glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+    background: var(--primary);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .glow-a {
+    width: 620px;
+    height: 620px;
+    left: 50%;
+    top: 46%;
+    transform: translate(-50%, -50%) scale(0.6);
+    animation:
+      glow-in 0.9s ease-out 0.05s forwards,
+      glow-pulse 3s ease-in-out 1s infinite;
+  }
+  .glow-b {
+    width: 380px;
+    height: 380px;
+    left: 50%;
+    top: 46%;
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(0.4);
+    background: var(--primary-bright);
+    filter: blur(60px);
+    animation:
+      glow-in 0.8s ease-out 0.12s forwards,
+      glow-pulse 2.6s ease-in-out 0.9s infinite reverse;
+  }
+
+  @keyframes glow-in {
+    to { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
+  }
+  @keyframes glow-pulse {
+    0%, 100% { opacity: 0.28; transform: translate(-50%, -50%) scale(0.94); }
+    50% { opacity: 0.48; transform: translate(-50%, -50%) scale(1.06); }
+  }
+
+  /* full-stage flash right before phase-out */
+  .flash {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 900px 700px at 50% 46%, oklch(90% 0.05 40 / 0.9), transparent 70%);
+    opacity: 0;
+    pointer-events: none;
+    animation: flash-burst 0.4s ease-out forwards;
+    animation-delay: 3.05s;
+  }
+  @keyframes flash-burst {
+    0% { opacity: 0; }
+    35% { opacity: 0.55; }
+    100% { opacity: 0; }
+  }
+
+  /* floating particles */
+  .particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    background: var(--primary-bright);
+    opacity: 0;
+    box-shadow: 0 0 12px 2px var(--primary);
+  }
+
+  .content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+  }
+
+  .mark-wrap {
+    position: relative;
+    width: 152px;
+    height: 152px;
+    opacity: 0;
+    transform: scale(0.55);
+    animation:
+      mark-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards,
+      mark-breathe 2.4s ease-in-out 1.1s infinite alternate;
+  }
+
+  .mark {
+    width: 100%;
+    height: 100%;
+    border-radius: 34px;
+    background: linear-gradient(155deg, var(--primary-bright), var(--primary));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow:
+      0 0 0 1px oklch(100% 0 0 / 0.06),
+      0 25px 70px -18px oklch(64% 0.15 35 / 0.75),
+      0 8px 24px -8px oklch(0% 0 0 / 0.5);
+  }
+
+  .mark svg { width: 56%; height: 56%; overflow: visible; }
+
+  .arc {
+    stroke-dasharray: 137.1;
+    stroke-dashoffset: 137.1;
+    animation: arc-draw 0.85s cubic-bezier(0.65, 0, 0.35, 1) 0.28s forwards;
+  }
+  @keyframes arc-draw {
+    to { stroke-dashoffset: 0; }
+  }
+
+  @keyframes mark-in {
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes mark-breathe {
+    from { transform: scale(1); filter: brightness(1); }
+    to { transform: scale(1.035); filter: brightness(1.08); }
+  }
+
+  .wordmark-wrap {
+    position: relative;
+  }
+
+  .wordmark, .wordmark-shine {
+    font-family: 'Fraunces', serif;
+    font-weight: 650;
+    font-size: 82px;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+
+  .wordmark {
+    color: var(--foreground);
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(18px);
+    animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.85s forwards;
+  }
+
+  .wordmark-shine {
+    position: absolute;
+    inset: 0;
+    color: transparent;
+    background-image: linear-gradient(100deg, transparent 35%, oklch(100% 0 0 / 0.85) 50%, transparent 65%);
+    background-size: 300% 100%;
+    background-position: -120% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    opacity: 0;
+    animation: shine-sweep 1.1s ease-in-out 1.6s forwards;
+  }
+  @keyframes shine-sweep {
+    0% { opacity: 0; background-position: -120% 0; }
+    12% { opacity: 1; }
+    75% { opacity: 1; }
+    100% { opacity: 0; background-position: 160% 0; }
+  }
+
+  .tagline {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 23px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--muted);
+    opacity: 0;
+    transform: translateY(12px);
+    animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 1.4s forwards;
+  }
+
+  @keyframes rise-in {
+    to { opacity: 1; transform: translateY(0); filter: blur(0); }
+  }
+
+  @keyframes stage-out {
+    0% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.07); }
+  }
+
+  /* recording aid only */
+  .controls {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    z-index: 10;
+    animation: controls-fade 1.2s ease forwards;
+    animation-delay: 2.2s;
+  }
+  .controls button {
+    font: inherit;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid oklch(100% 0 0 / 0.14);
+    background: oklch(100% 0 0 / 0.06);
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .controls button:hover { color: var(--foreground); }
+  @keyframes controls-fade {
+    to { opacity: 0; pointer-events: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <div class="vignette"></div>
+  <div class="glow glow-a"></div>
+  <div class="glow glow-b"></div>
+  <div class="particles" id="particles"></div>
+  <div class="flash"></div>
+
+  <div class="content">
+    <div class="mark-wrap" id="markWrap">
+      <div class="mark">
+        <svg viewBox="0 0 100 100" fill="none" aria-hidden="true">
+          <path
+            class="arc"
+            d="M 61.21 24.77 A 26.4 26.4 0 1 1 34.81 31.97"
+            stroke="currentColor"
+            stroke-width="13.2"
+            stroke-linecap="round"
+          />
+        </svg>
+      </div>
+    </div>
+
+    <div class="wordmark-wrap">
+      <div class="wordmark" id="wordmark">Recura</div>
+      <div class="wordmark-shine" aria-hidden="true">Recura</div>
+    </div>
+
+    <div class="tagline" id="tagline">Discharge Safety Net</div>
+  </div>
+</div>
+
+<div class="controls">
+  <button onclick="replay()">Replay</button>
+  <span style="color: oklch(70% 0.01 60);">~3.9s · 1920×1080 · dark · record this window, or replay before capture starts</span>
+</div>
+
+<script>
+  const particleHost = document.getElementById('particles');
+  const PARTICLE_COUNT = 22;
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = 2 + Math.random() * 4;
+    const x = 30 + Math.random() * 40;
+    const y = 18 + Math.random() * 62;
+    const dur = 3.5 + Math.random() * 3;
+    const delay = Math.random() * 1.8;
+    const drift = 12 + Math.random() * 24;
+    const peak = 0.25 + Math.random() * 0.45;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    p.style.left = x + '%';
+    p.style.top = y + '%';
+    const kf = 'pf' + i;
+    const style = document.createElement('style');
+    style.textContent =
+      '@keyframes ' + kf + ' {' +
+      '0% { transform: translateY(0px); opacity: 0; }' +
+      '15% { opacity: ' + peak + '; }' +
+      '50% { transform: translateY(-' + drift + 'px); opacity: ' + (peak * 0.7) + '; }' +
+      '85% { opacity: ' + peak + '; }' +
+      '100% { transform: translateY(0px); opacity: 0; }' +
+      '}';
+    document.head.appendChild(style);
+    p.style.animation = kf + ' ' + dur + 's ease-in-out ' + delay + 's infinite';
+    particleHost.appendChild(p);
+  }
+
+  function replay() {
+    const root = document.getElementById('stage');
+    const targets = root.querySelectorAll('*');
+    [root, ...targets].forEach(el => {
+      const anim = getComputedStyle(el).animationName;
+      if (anim && anim !== 'none') {
+        el.style.animation = 'none';
+        void el.offsetWidth;
+        el.style.animation = '';
+      }
+    });
+  }
+
+  if (new URLSearchParams(location.search).get('clean') === '1') {
+    document.querySelector('.controls').style.display = 'none';
+  }
+</script>
+
+</body>
+</html>

@@ -43,7 +43,7 @@ Next.js 16 (App Router) on Vercel · Supabase (Postgres + Realtime) · Anthropic
 
 Real screens against the seeded demo dataset (Riverside Cardiology & Pulmonology Group — fictional, see safety rail #4), logged in as `maria.alvarez@demo.recura.health`.
 
-**Doctor dashboard** — the surface a clinician actually lives in. Left: their patient panel (`10 active`, scoped by RLS to whichever clinician is logged in). Center: Daniel Osei's chart — TCM 2-day contact status, RPM reporting days, and a PROMs/wearable-signal trend line, all pulled live rather than hardcoded. Right: the alert queue, color-coded by severity, each traceable to a specific check-in or wearable event and showing who reviewed it and what action they took.
+**Doctor dashboard** — the surface a clinician actually lives in. Left: their patient panel (`11 active`, scoped by RLS to whichever clinician is logged in). Center: Miguel Ortiz's chart — a COPD patient 3 days post-discharge with a critical, unreviewed alert (Apple Watch flagged a high resting heart rate, followed by a check-in call confirming severe breathlessness), plus TCM 2-day contact status, RPM reporting days, and a PROMs/wearable-signal trend line, all pulled live rather than hardcoded. Right: the alert queue, color-coded by severity, each traceable to a specific check-in or wearable event and showing who reviewed it and what action they took.
 
 ![Doctor dashboard: patient panel, chart, and alert queue](docs/screenshots/doctor-dashboard.png)
 
