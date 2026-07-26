@@ -4,6 +4,8 @@
 
 Built for the Juno Consumer Health Hackathon (institutional pivot). One physician group loses ~$274–372 in TCM/RPM billing per discharge because the 2-day post-discharge contact never happens — not because the care doesn't exist, but because no one calls in time ([research/08-business-model.md](research/08-business-model.md)). This closes that gap: patients get a voice check-in every morning instead of silence until the next appointment; clinicians get a dashboard instead of a stack of unread discharge summaries; the practice gets the billing codes it already qualifies for but usually misses.
 
+**Try it live:** [recura-health.vercel.app](https://recura-health.vercel.app/) — log in to `/doctor` as `maria.alvarez@demo.recura.health` (see [Access control & audit trail](#access-control--audit-trail) for the password), or open the patient portal with access code `RIVERSIDE2026`. Demo data only — see safety rail #4.
+
 ## The idea
 
 Post-discharge, most of what goes wrong is not novel — it's a heart failure patient who stopped taking a diuretic, or breathlessness that's crossed from "expected" to "call someone." The gap isn't clinical knowledge, it's **contact**: nobody rings the patient in the 48-hour window CMS requires for TCM billing, and nobody's watching for the one bad morning between the discharge appointment and the follow-up. This product does one thing — daily voice contact with structured escalation — rather than trying to be a general remote-monitoring platform. See [strategy/us-readmissions-thesis.md](strategy/us-readmissions-thesis.md) for why this is now: Apple's 2025 hypertension-notification clearance, CMS's CY2026 RPM rule changes, and FY2027 HRRP expansion to Medicare Advantage all land in the same 18-month window.
@@ -162,7 +164,7 @@ DEMO_RESEED_ENABLED=
 
 ### Real phone calls (optional)
 
-By default check-in calls connect via WebRTC straight from the doctor's browser (`components/doctor/CheckinCallButton.tsx`) — no telephony required. To have the agent actually dial the patient's phone instead:
+By default check-in calls connect via WebRTC straight from the browser, started from the patient portal (`components/doctor/CheckinCallButton.tsx`, rendered on `/patient/[id]`) — no telephony required. The doctor dashboard instead exposes "Call real phone" for a clinician-initiated real call. To have the agent actually dial the patient's phone:
 
 1. In the ElevenLabs dashboard, under Conversational AI → Phone Numbers, provision a number (this is a real purchase — do it there, not something this repo can do for you) and copy its **Phone Number ID** into `ELEVENLABS_PHONE_NUMBER_ID`.
 2. Under that agent's settings, add a Post-Call Webhook pointing at `https://<your-deployment>/api/call/webhook`, and copy its signing secret into `ELEVENLABS_WEBHOOK_SECRET`.

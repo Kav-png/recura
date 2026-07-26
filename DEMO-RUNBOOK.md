@@ -6,7 +6,7 @@ Click-by-click order for the ~1 minute demo spine. Written for Block H (freeze +
 
 1. Reset demo data: `/settings` → log in as `maria.alvarez@demo.recura.health` (admin — required, see README's "Access control & audit trail") → "Reload demo data". Confirms 10 clean demo patients, no leftover test data from the last rehearsal.
 2. Confirm env vars are set (locally `.env.local`, on the deployed link Vercel project settings): `ANTHROPIC_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — the live letter parse and real-patient paths silently no-op without them.
-3. Pre-open three tabs, in this order: `/doctor` (clinician console, logged in as Dr. Alvarez), `/practice` (ROI dashboard), `/patient/[id]` for whichever demo patient you'll use as the portal example.
+3. Pre-open three tabs, in this order: `/doctor` (clinician console, logged in as Dr. Alvarez), `/practice` (ROI dashboard), `/patient/[id]` for the same demo patient whose letter you're about to parse (the check-in call now starts from this tab).
 4. Have the printed copy of `prebuild/letter-1-hf.html` in hand.
 5. Backup video ready on a second device, in case the live parse or call needs to be skipped (see "If something breaks" below).
 6. Phone/laptop >80% battery, volume up, DND off.
@@ -15,18 +15,17 @@ Click-by-click order for the ~1 minute demo spine. Written for Block H (freeze +
 
 1. **`/doctor`** → "New patient" → "From discharge letter" → photograph the printed `letter-1-hf.html`.
 2. Live parse returns → red flag visible on the new patient's detail page immediately.
-3. On the patient detail page → "Start check-in call" (WebRTC browser call by default — no telephony setup needed; see "Real call vs. browser call" below if dialing an actual phone).
+3. Switch to the **`/patient/[id]`** tab for that same patient → "Start check-in call" (WebRTC browser call by default — no telephony setup needed; see "Real call vs. browser call" below if dialing an actual phone). Narrate this as the patient's morning call — the portal tab doubles as the "phone ringing on stage" beat.
 4. Give a red-flag answer during the call (e.g. describe the weight-gain/breathlessness threshold the letter's red flag names).
-5. Switch to the Alerts panel (same `/doctor` tab, or the sticky rail) — the alert appears live, no refresh needed.
+5. Switch back to **`/doctor`** → the Alerts panel (same tab, or the sticky rail) — the alert appears live, no refresh needed.
 6. Click the alert → "Bring them in" (or the equivalent review action) — this is the clinician decision the product exists to support.
 7. Switch to **`/practice`** tab → the captured-billing number has moved.
-8. Optionally switch to **`/patient/[id]`** tab to show the plain-English portal view of the same patient.
 
 ## Real call vs. browser call
 
-Default: WebRTC call straight from the doctor's browser (`components/doctor/CheckinCallButton.tsx`) — always works, no phone/hotspot needed, this is the safe default for stage.
+Default: WebRTC call straight from the browser, started from the `/patient/[id]` portal tab (`components/doctor/CheckinCallButton.tsx`, `showBrowserDemo` on) — always works, no phone/hotspot needed, this is the safe default for stage.
 
-If dialing an actual patient phone for effect: needs `ELEVENLABS_PHONE_NUMBER_ID` provisioned and a real network — use a phone hotspot, not venue wifi, since ElevenLabs' outbound call audio is sensitive to venue wifi latency/NAT. If hotspot audio is unreliable in rehearsal, fall back to the browser call — this is an accepted fallback per Block B, not a degraded demo.
+If dialing an actual patient phone for effect: on the `/doctor` tab, use "Call real phone" on the patient's detail page — needs `ELEVENLABS_PHONE_NUMBER_ID` provisioned and a real network — use a phone hotspot, not venue wifi, since ElevenLabs' outbound call audio is sensitive to venue wifi latency/NAT. If hotspot audio is unreliable in rehearsal, fall back to the browser call from the patient tab — this is an accepted fallback per Block B, not a degraded demo.
 
 ## Reset command
 

@@ -144,7 +144,12 @@ export function PatientDetail({
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
           <PatientAlertBar alert={headerAlert} />
-          <CheckinCallButton patientId={patient.id} patientName={patient.name} patientPhone={patient.phone} />
+          <CheckinCallButton
+            patientId={patient.id}
+            patientName={patient.name}
+            patientPhone={patient.phone}
+            showBrowserDemo={false}
+          />
           <EditPatientButton patient={patient} medications={medications} />
           <RemovePatientButton patientId={patient.id} patientName={patient.name} />
         </div>

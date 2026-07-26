@@ -20,10 +20,13 @@ export function CheckinCallButton({
   patientId,
   patientName,
   patientPhone,
+  showBrowserDemo = true,
 }: {
   patientId: string;
   patientName: string;
   patientPhone?: string | null;
+  // Off on the doctor dashboard — the browser demo call now lives on the patient portal.
+  showBrowserDemo?: boolean;
 }) {
   const router = useRouter();
   const [status, setStatus] = useState<CallStatus>("idle");
@@ -189,14 +192,16 @@ export function CheckinCallButton({
 
   return (
     <>
-      <button
-        onClick={handleStart}
-        disabled={status === "connecting" || status === "connected"}
-        className="flex items-center gap-1.5 text-[12.5px] font-semibold px-3 py-2 rounded-[10px] bg-primary text-white disabled:opacity-50 shrink-0"
-      >
-        <Phone size={14} />
-        Start check-in call
-      </button>
+      {showBrowserDemo && (
+        <button
+          onClick={handleStart}
+          disabled={status === "connecting" || status === "connected"}
+          className="flex items-center gap-1.5 text-[12.5px] font-semibold px-3 py-2 rounded-[10px] bg-primary text-white disabled:opacity-50 shrink-0"
+        >
+          <Phone size={14} />
+          Start check-in call
+        </button>
+      )}
 
       {patientPhone && (
         <div className="flex flex-col items-start sm:items-end gap-1">
